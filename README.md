@@ -1,14 +1,12 @@
 # Lambda Cost and Performance Optimization
 
-A comprehensive study of AWS Lambda performance optimization and cost analysis using various memory configurations and JavaScript bundling strategies.
+A comprehensive study of AWS Lambda performance optimization across memory configurations and JavaScript bundling strategies.
 
-## Project Overview
-
-This project aims to:
-1. Deploy test Lambda functions with various RAM configurations using AWS SAM
-2. Measure execution time and cost for different memory settings
-3. Test different JavaScript bundling strategies to optimize cold start times
-4. Provide data-driven insights for Lambda optimization
+## Project Goals
+1. ✅ Memory configuration optimization with automated testing
+2. ✅ Cost vs performance analysis with blended scenarios  
+3. 🔄 JavaScript bundling strategy comparison
+4. ✅ Data-driven optimization recommendations
 
 ## Project Structure
 
@@ -16,195 +14,65 @@ This project aims to:
 lambda-cost-and-performance-optimization/
 ├── README.md
 ├── template.yaml                 # SAM template for Lambda deployments
+├── samconfig.toml               # SAM configuration
+├── package.json                 # Project dependencies and scripts
 ├── src/
-│   ├── test-functions/          # Lambda function implementations
-│   │   ├── basic-function/      # Simple test function
-│   │   ├── heavy-computation/   # CPU-intensive function
-│   │   ├── io-intensive/        # I/O heavy function
-│   │   └── memory-intensive/    # Memory heavy function
-│   └── bundling-tests/          # Different bundling configurations
-│       ├── webpack/             # Webpack bundled versions
-│       ├── esbuild/             # ESBuild bundled versions
-│       ├── rollup/              # Rollup bundled versions
-│       └── unbundled/           # Native Node.js modules
+│   └── test-functions/          # Lambda function implementations
+│       ├── basic-function/      # ✅ Simple test function
+│       └── heavy-computation/   # ✅ CPU-intensive function
 ├── scripts/
-│   ├── deploy.sh               # Deployment automation
-│   ├── test-runner.sh          # Performance testing automation
-│   └── cost-calculator.js      # Cost analysis scripts
-├── results/
-│   ├── performance-data/       # Test execution results
-│   ├── cost-analysis/          # Cost breakdown data
-│   └── reports/               # Generated reports and charts
-└── docs/
-    ├── methodology.md          # Testing methodology
-    ├── results-analysis.md     # Results interpretation
-    └── recommendations.md      # Best practices and recommendations
+│   ├── deploy.sh               # ✅ Deployment automation
+│   ├── test-basic-functions.js # ✅ Basic function performance tests
+│   ├── test-computation-functions.js # ✅ Computation function tests
+│   └── test-runner.js          # ✅ Comprehensive test orchestration & cost analysis
+└── results/                    # Test execution results (generated)
 ```
 
-## Phase 1: Memory Configuration Testing
+## Current Status ✅
 
-### Memory Configurations to Test
-- 128 MB (minimum)
-- 256 MB
-- 512 MB
-- 1024 MB (1 GB)
-- 2048 MB (2 GB)
-- 3008 MB (maximum)
+**Infrastructure:** 10 Lambda functions (6 basic + 4 computation) with memory configs 128MB-3008MB, API Gateway endpoints, CloudWatch monitoring, X-Ray tracing
 
-### Test Functions
-1. **Basic Function**: Simple Hello World with minimal processing
-2. **Heavy Computation**: Mathematical calculations, sorting algorithms
-3. **I/O Intensive**: File operations, HTTP requests
-4. **Memory Intensive**: Large object manipulation, data processing
+**Testing:** Comprehensive performance testing with cold/warm start detection, statistical analysis, and cost modeling with blended scenarios
 
-### Metrics to Collect
-- Cold start duration
-- Warm execution time
-- Total execution time
-- Memory utilization
-- Cost per execution
-- Cost per GB-second
+**Analysis:** Enhanced cost analysis with scenario-based recommendations for different workload patterns
 
-## Phase 2: JavaScript Bundling Optimization
+## Next Phase: Bundling Optimization
 
-### Bundling Strategies to Test
+**Strategies to Test:**
+- Webpack (production optimized, tree shaking, code splitting)
+- ESBuild (fast bundling and minification)
+- Rollup (ES modules optimization)
+- Unbundled baseline (current)
 
-#### 1. Webpack
-- Default configuration
-- Production optimized
-- Tree shaking enabled
-- Code splitting
-- Minification + compression
+**Metrics:** Bundle size, cold start time, module loading performance
 
-#### 2. ESBuild
-- Default configuration
-- Minified output
-- Bundle splitting
-- External dependencies
+## Quick Start
 
-#### 3. Rollup
-- ES modules output
-- Tree shaking
-- Minification
-- Plugin optimizations
+**Prerequisites:** Node.js 22+, AWS CLI, SAM CLI configured
 
-#### 4. Unbundled (Baseline)
-- Native Node.js modules
-- No bundling
-- Direct dependency loading
+```bash
+# Deploy and test
+./scripts/deploy.sh
+npm run test:performance
 
-### Bundle Analysis Metrics
-- Bundle size (compressed/uncompressed)
-- Number of files
-- Cold start time
-- Module loading time
-- Dependency tree depth
+# Test individual endpoints
+curl https://wlk17iusoe.execute-api.us-east-1.amazonaws.com/Prod/basic-128
+curl https://wlk17iusoe.execute-api.us-east-1.amazonaws.com/Prod/computation-128
+```
 
-## Testing Methodology
+**Available Scripts:**
+- `npm run test:basic` - Test basic functions
+- `npm run test:computation` - Test computation functions  
+- `npm run test:performance` - Run comprehensive tests
+- `npm run logs` - View CloudWatch logs
 
-### 1. Deployment Strategy
-- Use AWS SAM for consistent deployments
-- Deploy all configurations in parallel
-- Tag resources for easy cleanup
-- Use CloudFormation outputs for automation
+## Key Questions & Status
 
-### 2. Performance Testing
-- Use AWS X-Ray for detailed tracing
-- Implement custom CloudWatch metrics
-- Run tests in multiple regions
-- Execute tests at different times of day
-- Multiple iterations for statistical significance
+1. ✅ **What is the optimal memory configuration for different workload types?**
+2. 🔄 **How does bundle size impact cold start performance?** (Next Phase)
+3. 🔄 **Which bundling strategy provides the best cost/performance ratio?** (Next Phase)
+4. ✅ **What is the break-even point for memory vs. execution time trade-offs?**
 
-### 3. Cost Analysis
-- Track CloudWatch billing metrics
-- Calculate cost per execution
-- Factor in data transfer costs
-- Include monitoring and logging costs
+---
 
-## Tools and Technologies
-
-### Development
-- **AWS SAM**: Infrastructure as Code and deployment
-- **Node.js**: Runtime environment
-- **TypeScript**: Type safety and better tooling
-- **Jest**: Unit testing framework
-
-### Bundling Tools
-- **Webpack**: Traditional bundling
-- **ESBuild**: Fast bundling and minification
-- **Rollup**: ES modules optimization
-- **SWC**: Fast TypeScript/JavaScript compilation
-
-### Monitoring and Analysis
-- **AWS X-Ray**: Distributed tracing
-- **CloudWatch**: Metrics and logging
-- **AWS Cost Explorer**: Cost analysis
-- **Custom dashboards**: Real-time monitoring
-
-### Data Processing
-- **Python/Pandas**: Data analysis
-- **Chart.js/D3.js**: Visualization
-- **CSV/JSON**: Data export formats
-
-## Implementation Plan
-
-### Week 1: Project Setup
-- [ ] Initialize SAM project
-- [ ] Create basic Lambda functions
-- [ ] Set up CI/CD pipeline
-- [ ] Configure monitoring and logging
-
-### Week 2: Memory Configuration Testing
-- [ ] Deploy functions with different memory settings
-- [ ] Implement automated testing scripts
-- [ ] Collect baseline performance data
-- [ ] Generate initial cost analysis
-
-### Week 3: Bundling Strategy Implementation
-- [ ] Set up different bundling configurations
-- [ ] Create build scripts for each strategy
-- [ ] Deploy bundled versions
-- [ ] Implement bundle size analysis
-
-### Week 4: Performance Testing and Analysis
-- [ ] Execute comprehensive test suites
-- [ ] Collect and analyze performance data
-- [ ] Generate cost comparison reports
-- [ ] Document findings and recommendations
-
-## Expected Deliverables
-
-1. **Performance Reports**: Detailed analysis of execution times across configurations
-2. **Cost Analysis**: Comprehensive cost breakdown and optimization recommendations
-3. **Bundle Analysis**: Comparison of different bundling strategies and their impact
-4. **Best Practices Guide**: Actionable recommendations for Lambda optimization
-5. **Automation Scripts**: Reusable tools for ongoing optimization testing
-
-## Key Questions to Answer
-
-1. What is the optimal memory configuration for different workload types?
-2. How does bundle size impact cold start performance?
-3. Which bundling strategy provides the best cost/performance ratio?
-4. What is the break-even point for memory vs. execution time trade-offs?
-5. How do different dependency patterns affect cold start times?
-
-## Success Metrics
-
-- Reduce cold start times by 30-50%
-- Optimize cost efficiency by 20-40%
-- Provide data-driven memory allocation recommendations
-- Create reusable optimization methodology
-- Document best practices for different use cases
-
-## Getting Started
-
-1. Clone this repository
-2. Install dependencies: `npm install`
-3. Configure AWS credentials
-4. Deploy initial test functions: `sam deploy`
-5. Run baseline tests: `npm run test:performance`
-6. Analyze results: `npm run analyze`
-
-## Contributing
-
-This project is designed for systematic performance testing. Please follow the established methodology when adding new test cases or configurations.
+**Status:** Memory optimization complete ✅ | Next: Bundling optimization 🔄

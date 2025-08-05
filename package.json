@@ -1,0 +1,39 @@
+{
+  "name": "lambda-cost-and-performance-optimization",
+  "version": "1.0.0",
+  "description": "A comprehensive study of AWS Lambda performance optimization and cost analysis",
+  "main": "index.js",
+  "scripts": {
+    "install-functions": "cd src/test-functions/basic-function && npm install && cd ../heavy-computation && npm install",
+    "test:performance": "node scripts/test-runner.js",
+    "test:basic": "node scripts/test-basic-functions.js",
+    "test:computation": "node scripts/test-computation-functions.js",
+    "logs": "sam logs --stack-name lambda-cost-performance-optimization",
+    "clean": "rm -rf .aws-sam/",
+    "setup": "npm run install-functions && npm run build"
+  },
+  "keywords": [
+    "aws",
+    "lambda",
+    "performance",
+    "optimization",
+    "cost-analysis",
+    "serverless",
+    "sam"
+  ],
+  "author": "Performance Optimization Team",
+  "license": "MIT",
+  "devDependencies": {
+    "aws-sdk": "^2.1481.0",
+    "csv-writer": "^1.6.0",
+    "jest": "^29.7.0"
+  },
+  "dependencies": {},
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sandrodz/lambda-cost-and-performance-optimization"
+  }
+}

@@ -1,0 +1,281 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Lambda Cost and Performance Optimization
+  
+  SAM Template for testing Lambda functions with various memory configurations
+  and bundling strategies to optimize performance and cost.
+
+Parameters:
+  EnableXRayTracing:
+    Type: String
+    Default: 'true'
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Description: Enable AWS X-Ray tracing
+
+Globals:
+  Function:
+    Timeout: 30
+    Runtime: nodejs22.x
+    Architectures:
+      - x86_64
+    Tracing: !If [EnableXRay, Active, PassThrough]
+    Environment:
+      Variables:
+        NODE_ENV: production
+        LOG_LEVEL: INFO
+    Tags:
+      Project: lambda-cost-performance-optimization
+
+Conditions:
+  EnableXRay: !Equals [!Ref EnableXRayTracing, 'true']
+
+Resources:
+  # Basic Function - Simple Hello World
+  BasicFunction128:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/test-functions/basic-function/
+      Handler: index.handler
+      MemorySize: 128
+      FunctionName: basic-function-128mb
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /basic-128
+            Method: get
+
+  BasicFunction256:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/test-functions/basic-function/
+      Handler: index.handler
+      MemorySize: 256
+      FunctionName: basic-function-256mb
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /basic-256
+            Method: get
+
+  BasicFunction512:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/test-functions/basic-function/
+      Handler: index.handler
+      MemorySize: 512
+      FunctionName: basic-function-512mb
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /basic-512
+            Method: get
+
+  BasicFunction1024:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/test-functions/basic-function/
+      Handler: index.handler
+      MemorySize: 1024
+      FunctionName: basic-function-1024mb
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /basic-1024
+            Method: get
+
+  BasicFunction2048:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/test-functions/basic-function/
+      Handler: index.handler
+      MemorySize: 2048
+      FunctionName: basic-function-2048mb
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /basic-2048
+            Method: get
+
+  BasicFunction3008:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/test-functions/basic-function/
+      Handler: index.handler
+      MemorySize: 3008
+      FunctionName: basic-function-3008mb
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /basic-3008
+            Method: get
+
+  # Heavy Computation Functions
+  ComputationFunction128:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/test-functions/heavy-computation/
+      Handler: index.handler
+      MemorySize: 128
+      FunctionName: computation-function-128mb
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /computation-128
+            Method: get
+
+  ComputationFunction512:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/test-functions/heavy-computation/
+      Handler: index.handler
+      MemorySize: 512
+      FunctionName: computation-function-512mb
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /computation-512
+            Method: get
+
+  ComputationFunction1024:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/test-functions/heavy-computation/
+      Handler: index.handler
+      MemorySize: 1024
+      FunctionName: computation-function-1024mb
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /computation-1024
+            Method: get
+
+  ComputationFunction3008:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/test-functions/heavy-computation/
+      Handler: index.handler
+      MemorySize: 3008
+      FunctionName: computation-function-3008mb
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /computation-3008
+            Method: get
+
+  # CloudWatch Log Groups with retention
+  BasicFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/basic-function
+      RetentionInDays: 7
+
+  ComputationFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/computation-function
+      RetentionInDays: 7
+
+  # Custom CloudWatch Dashboard
+  PerformanceDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: lambda-performance-dashboard
+      DashboardBody: !Sub |
+        {
+          "widgets": [
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 0,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  [ "AWS/Lambda", "Duration", "FunctionName", "basic-function-128mb" ],
+                  [ "...", "basic-function-256mb" ],
+                  [ "...", "basic-function-512mb" ],
+                  [ "...", "basic-function-1024mb" ],
+                  [ "...", "basic-function-2048mb" ],
+                  [ "...", "basic-function-3008mb" ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "${AWS::Region}",
+                "title": "Basic Function Duration by Memory Size",
+                "period": 300
+              }
+            },
+            {
+              "type": "metric",
+              "x": 12,
+              "y": 0,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  [ "AWS/Lambda", "Invocations", "FunctionName", "basic-function-128mb" ],
+                  [ "...", "basic-function-256mb" ],
+                  [ "...", "basic-function-512mb" ],
+                  [ "...", "basic-function-1024mb" ],
+                  [ "...", "basic-function-2048mb" ],
+                  [ "...", "basic-function-3008mb" ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "${AWS::Region}",
+                "title": "Basic Function Invocations",
+                "period": 300
+              }
+            }
+          ]
+        }
+
+Outputs:
+  # API Gateway endpoint URL
+  ApiGatewayUrl:
+    Description: "API Gateway endpoint URL"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
+    Export:
+      Name: api-gateway-url
+
+  # Function ARNs for testing scripts
+  BasicFunction128Arn:
+    Description: "Basic Function 128MB ARN"
+    Value: !GetAtt BasicFunction128.Arn
+    Export:
+      Name: basic-function-128-arn
+
+  BasicFunction3008Arn:
+    Description: "Basic Function 3008MB ARN"
+    Value: !GetAtt BasicFunction3008.Arn
+    Export:
+      Name: basic-function-3008-arn
+
+  ComputationFunction128Arn:
+    Description: "Computation Function 128MB ARN"
+    Value: !GetAtt ComputationFunction128.Arn
+    Export:
+      Name: computation-function-128-arn
+
+  ComputationFunction3008Arn:
+    Description: "Computation Function 3008MB ARN"
+    Value: !GetAtt ComputationFunction3008.Arn
+    Export:
+      Name: computation-function-3008-arn
+
+  DashboardUrl:
+    Description: "CloudWatch Dashboard URL"
+    Value: !Sub "https://console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#dashboards:name=lambda-performance-dashboard"

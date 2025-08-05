@@ -1,0 +1,13 @@
+{
+  "name": "heavy-computation-function",
+  "version": "1.0.0",
+  "description": "Heavy computation Lambda function for CPU-intensive performance testing",
+  "main": "index.js",
+  "dependencies": {
+    "@aws-sdk/client-cloudwatch": "^3.859.0",
+    "aws-xray-sdk-core": "^3.5.1"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}
