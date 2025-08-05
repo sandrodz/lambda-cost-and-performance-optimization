@@ -270,6 +270,39 @@ class PerformanceTestRunner {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 
+    // Determine best use case based on actual performance characteristics
+    determineBestUseCase(config, costAnalysis) {
+        const allConfigs = costAnalysis.allConfigurations;
+        
+        // Find optimal configurations for different scenarios
+        const warmOptimal = allConfigs.reduce((best, current) => 
+            current.costPer1MInvocations < best.costPer1MInvocations ? current : best);
+        const perfOptimal = allConfigs.reduce((fastest, current) => 
+            current.avgExecutionTime < fastest.avgExecutionTime ? current : fastest);
+        const mostCostEfficient = costAnalysis.mostCostEfficient;
+        
+        // Determine use case based on where this config ranks
+        if (config.memoryMB === warmOptimal.memoryMB) {
+            return 'High frequency (best warm cost)';
+        } else if (config.memoryMB === perfOptimal.memoryMB) {
+            return 'Cold start sensitive (fastest)';
+        } else if (config.memoryMB === mostCostEfficient.memoryMB) {
+            return 'Most cost efficient (blended)';
+        } else {
+            // Analyze position in the cost/performance spectrum
+            const costRank = allConfigs.findIndex(c => c.memoryMB === config.memoryMB);
+            const totalConfigs = allConfigs.length;
+            
+            if (costRank < totalConfigs / 3) {
+                return 'Budget focused';
+            } else if (costRank > (totalConfigs * 2) / 3) {
+                return 'Performance focused';
+            } else {
+                return 'Balanced workload';
+            }
+        }
+    }
+
     generateComprehensiveReport() {
         console.log('\n📊 Comprehensive Performance Report');
         console.log('=' .repeat(80));
@@ -371,10 +404,8 @@ class PerformanceTestRunner {
                     }
                 });
                 
-                // Determine best use case
-                let useCase = 'High frequency';
-                if (config.memoryMB >= 1024) useCase = 'Balanced workload';
-                if (config.memoryMB >= 2048) useCase = 'Cold start sensitive';
+                // Determine best use case based on actual performance characteristics
+                let useCase = this.determineBestUseCase(config, basicCost);
                 
                 const scenarioColumns = this.config.blendedScenarios.map(p => `$${blendedCosts[p].toFixed(4)}`).join(' | ');
                 console.log(`    ${config.memoryMB.toString().padStart(4)}MB | ${scenarioColumns} | ${useCase}`);
@@ -439,10 +470,8 @@ class PerformanceTestRunner {
                     }
                 });
                 
-                // Determine best use case
-                let useCase = 'High frequency';
-                if (config.memoryMB >= 1024) useCase = 'Balanced workload';
-                if (config.memoryMB >= 2048) useCase = 'Cold start sensitive';
+                // Determine best use case based on actual performance characteristics
+                let useCase = this.determineBestUseCase(config, compCost);
                 
                 const scenarioColumns = this.config.blendedScenarios.map(p => `$${blendedCosts[p].toFixed(2)}`).join(' | ');
                 console.log(`    ${config.memoryMB.toString().padStart(4)}MB | ${scenarioColumns} | ${useCase}`);
