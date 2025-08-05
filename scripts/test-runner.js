@@ -307,17 +307,198 @@ class PerformanceTestRunner {
         console.log('\n📊 Comprehensive Performance Report');
         console.log('=' .repeat(80));
         
-        // Test Overview
-        console.log('\n📋 Test Overview:');
-        console.log(`  • Test Timestamp: ${new Date(this.testResults.timestamp).toLocaleString()}`);
-        console.log(`  • Total Functions Tested: ${this.testResults.summary.totalFunctionsTested}`);
+        // Generate all analysis data objects first
+        const reportData = this.generateReportData();
         
-        // Optimal Memory Configurations
+        // Then render the visual output
+        this.renderReport(reportData);
+    }
+
+    generateReportData() {
+        const reportData = {
+            overview: this.generateOverviewData(),
+            recommendations: this.generateRecommendationsData(),
+            analysis: this.generateAnalysisData(),
+            insights: this.testResults.summary.performanceInsights || [],
+            scenarios: this.generateScenarioData(),
+            dataQuality: this.generateDataQualityData()
+        };
+        
+        return reportData;
+    }
+
+    generateOverviewData() {
+        return {
+            timestamp: new Date(this.testResults.timestamp).toLocaleString(),
+            totalFunctionsTested: this.testResults.summary.totalFunctionsTested,
+            testTypes: {
+                basic: this.testResults.basicFunctions ? this.testResults.basicFunctions.length : 0,
+                computation: this.testResults.computationFunctions ? this.testResults.computationFunctions.length : 0
+            }
+        };
+    }
+
+    generateRecommendationsData() {
+        const recommendations = {};
+        
+        if (this.testResults.summary.optimalMemoryConfigurations.basic) {
+            recommendations.basic = this.testResults.summary.optimalMemoryConfigurations.basic;
+        }
+        
+        if (this.testResults.summary.optimalMemoryConfigurations.computation) {
+            recommendations.computation = this.testResults.summary.optimalMemoryConfigurations.computation;
+        }
+        
+        return recommendations;
+    }
+
+    generateAnalysisData() {
+        const analysis = {};
+        
+        if (this.testResults.summary.costEfficiencyAnalysis.basic) {
+            analysis.basic = this.generateFunctionAnalysisData(this.testResults.summary.costEfficiencyAnalysis.basic, 'basic');
+        }
+        
+        if (this.testResults.summary.costEfficiencyAnalysis.computation) {
+            analysis.computation = this.generateFunctionAnalysisData(this.testResults.summary.costEfficiencyAnalysis.computation, 'computation');
+        }
+        
+        return analysis;
+    }
+
+    generateFunctionAnalysisData(costAnalysis, functionType) {
+        const warmBaseline = costAnalysis.allConfigurations[0];
+        
+        const warmStartData = costAnalysis.allConfigurations.map(config => ({
+            memoryMB: config.memoryMB,
+            executionTime: config.avgExecutionTime,
+            cost: config.costPer1MInvocations,
+            performanceGain: warmBaseline.avgExecutionTime > 0 ? 
+                (((warmBaseline.avgExecutionTime - config.avgExecutionTime) / warmBaseline.avgExecutionTime) * 100) : 0,
+            costChange: warmBaseline.costPer1MInvocations > 0 ? 
+                (((config.costPer1MInvocations - warmBaseline.costPer1MInvocations) / warmBaseline.costPer1MInvocations) * 100) : 0
+        }));
+
+        // Cold start data (if available)
+        const coldConfigs = costAnalysis.allConfigurations.filter(config => config.coldStartTime !== null);
+        let coldStartData = [];
+        if (coldConfigs.length > 0) {
+            const coldBaseline = coldConfigs[0];
+            coldStartData = coldConfigs.map(config => ({
+                memoryMB: config.memoryMB,
+                executionTime: config.coldStartTime,
+                cost: config.coldStartCostPer1M,
+                performanceGain: coldBaseline.coldStartTime > 0 ? 
+                    (((coldBaseline.coldStartTime - config.coldStartTime) / coldBaseline.coldStartTime) * 100) : 0,
+                costChange: coldBaseline.coldStartCostPer1M > 0 ? 
+                    (((config.coldStartCostPer1M - coldBaseline.coldStartCostPer1M) / coldBaseline.coldStartCostPer1M) * 100) : 0
+            }));
+        }
+
+        // Blended scenarios data
+        const blendedData = costAnalysis.allConfigurations.map(config => {
+            const scenarios = {};
+            this.config.blendedScenarios.forEach(coldPercentage => {
+                const warmPercentage = 1 - coldPercentage;
+                if (config.coldStartCostPer1M > 0) {
+                    scenarios[coldPercentage] = (config.coldStartCostPer1M * coldPercentage) + (config.costPer1MInvocations * warmPercentage);
+                } else {
+                    scenarios[coldPercentage] = config.costPer1MInvocations;
+                }
+            });
+            
+            return {
+                memoryMB: config.memoryMB,
+                scenarios: scenarios,
+                useCase: this.determineBestUseCase(config, costAnalysis)
+            };
+        });
+
+        return {
+            warmStart: warmStartData,
+            coldStart: coldStartData,
+            blended: blendedData,
+            hasAnyColdStart: coldConfigs.length > 0
+        };
+    }
+
+    generateScenarioData() {
+        const scenarios = {};
+        
+        if (this.testResults.summary.costEfficiencyAnalysis.basic) {
+            const basicCost = this.testResults.summary.costEfficiencyAnalysis.basic;
+            scenarios.basic = {
+                warmOptimal: basicCost.allConfigurations.reduce((best, current) => 
+                    current.costPer1MInvocations < best.costPer1MInvocations ? current : best),
+                perfOptimal: basicCost.allConfigurations.reduce((fastest, current) => 
+                    current.avgExecutionTime < fastest.avgExecutionTime ? current : fastest)
+            };
+        }
+        
+        if (this.testResults.summary.costEfficiencyAnalysis.computation) {
+            const compCost = this.testResults.summary.costEfficiencyAnalysis.computation;
+            scenarios.computation = {
+                warmOptimal: compCost.allConfigurations.reduce((best, current) => 
+                    current.costPer1MInvocations < best.costPer1MInvocations ? current : best),
+                perfOptimal: compCost.allConfigurations.reduce((fastest, current) => 
+                    current.avgExecutionTime < fastest.avgExecutionTime ? current : fastest)
+            };
+        }
+        
+        return scenarios;
+    }
+
+    generateDataQualityData() {
+        const dataQuality = {};
+        
+        if (this.testResults.basicFunctions) {
+            dataQuality.basic = {
+                totalConfigurations: this.testResults.basicFunctions.length,
+                configurations: this.testResults.basicFunctions.map(result => ({
+                    memoryMB: result.memoryMB,
+                    coldCount: result.coldStart ? result.coldStart.count : 0,
+                    warmCount: result.warmStart ? result.warmStart.count : 0
+                }))
+            };
+        }
+        
+        if (this.testResults.computationFunctions) {
+            dataQuality.computation = {
+                totalConfigurations: this.testResults.computationFunctions.length,
+                configurations: this.testResults.computationFunctions.map(result => ({
+                    memoryMB: result.memoryMB,
+                    coldCount: result.coldStart ? result.coldStart.count : 0,
+                    warmCount: result.warmStart ? result.warmStart.count : 0
+                }))
+            };
+        }
+        
+        return dataQuality;
+    }
+
+    renderReport(reportData) {
+        this.renderOverview(reportData.overview);
+        this.renderRecommendations(reportData.recommendations);
+        this.renderAnalysis(reportData.analysis);
+        this.renderInsights(reportData.insights);
+        this.renderScenarios(reportData.scenarios);
+        this.renderDataQuality(reportData.dataQuality);
+    }
+
+    renderOverview(overview) {
+        console.log('\n📋 Test Overview:');
+        console.log(`  • Test Timestamp: ${overview.timestamp}`);
+        console.log(`  • Total Functions Tested: ${overview.totalFunctionsTested}`);
+        console.log(`  • Basic Functions: ${overview.testTypes.basic} configurations`);
+        console.log(`  • Computation Functions: ${overview.testTypes.computation} configurations`);
+    }
+
+    renderRecommendations(recommendations) {
         console.log('\n🎯 Recommended Memory Configurations (Balanced):');
         console.log('─'.repeat(55));
         
-        if (this.testResults.summary.optimalMemoryConfigurations.basic) {
-            const basic = this.testResults.summary.optimalMemoryConfigurations.basic;
+        if (recommendations.basic) {
+            const basic = recommendations.basic;
             console.log(`  Basic Functions: ${basic.memoryMB}MB`);
             console.log(`    • Warm Start Avg: ${basic.warmStartAvg.toFixed(2)}ms`);
             if (basic.coldStartAvg !== null) {
@@ -329,8 +510,8 @@ class PerformanceTestRunner {
             console.log(`    • Recommendation: ${basic.recommendation}`);
         }
         
-        if (this.testResults.summary.optimalMemoryConfigurations.computation) {
-            const comp = this.testResults.summary.optimalMemoryConfigurations.computation;
+        if (recommendations.computation) {
+            const comp = recommendations.computation;
             console.log(`  Computation Functions: ${comp.memoryMB}MB`);
             console.log(`    • Warm Start Avg: ${comp.warmStartAvg.toFixed(2)}ms`);
             if (comp.coldStartAvg !== null) {
@@ -341,201 +522,103 @@ class PerformanceTestRunner {
             console.log(`    • Blended Cost: $${comp.blendedCost.toFixed(4)} per 1M invocations`);
             console.log(`    • Recommendation: ${comp.recommendation}`);
         }
-        
-        // Cost Efficiency Analysis
+    }
+
+    renderAnalysis(analysis) {
         console.log('\n💰 Detailed Cost vs Performance Analysis:');
         console.log('─'.repeat(80));
         
-        if (this.testResults.summary.costEfficiencyAnalysis.basic) {
-            const basicCost = this.testResults.summary.costEfficiencyAnalysis.basic;
-            
-            // Warm Start Analysis
-            console.log(`\n  📈 Basic Functions - Warm Start Performance:`);
-            console.log(`    Memory | Warm Time | Warm Cost/1M | Perf Gain | Cost Change`);
-            console.log(`    ────────────────────────────────────────────────────────────`);
-            
-            const warmBaseline = basicCost.allConfigurations[0];
-            basicCost.allConfigurations.forEach(config => {
-                const perfGain = warmBaseline.avgExecutionTime > 0 ? 
-                    (((warmBaseline.avgExecutionTime - config.avgExecutionTime) / warmBaseline.avgExecutionTime) * 100) : 0;
-                const costChange = warmBaseline.costPer1MInvocations > 0 ? 
-                    (((config.costPer1MInvocations - warmBaseline.costPer1MInvocations) / warmBaseline.costPer1MInvocations) * 100) : 0;
-                
-                console.log(`    ${config.memoryMB.toString().padStart(4)}MB | ${config.avgExecutionTime.toFixed(1).padStart(8)}ms | $${config.costPer1MInvocations.toFixed(4).padStart(10)} | ${perfGain >= 0 ? '+' : ''}${perfGain.toFixed(1).padStart(8)}% | ${costChange >= 0 ? '+' : ''}${costChange.toFixed(1).padStart(9)}%`);
-            });
-
-            // Cold Start Analysis (if data available)
-            const hasAnyColdStart = basicCost.allConfigurations.some(config => config.coldStartTime !== null);
-            if (hasAnyColdStart) {
-                console.log(`\n  ❄️  Basic Functions - Cold Start Performance:`);
-                console.log(`    Memory | Cold Time | Cold Cost/1M | Perf Gain | Cost Change`);
-                console.log(`    ────────────────────────────────────────────────────────────`);
-                
-                const coldConfigs = basicCost.allConfigurations.filter(config => config.coldStartTime !== null);
-                if (coldConfigs.length > 0) {
-                    const coldBaseline = coldConfigs[0];
-                    coldConfigs.forEach(config => {
-                        const perfGain = coldBaseline.coldStartTime > 0 ? 
-                            (((coldBaseline.coldStartTime - config.coldStartTime) / coldBaseline.coldStartTime) * 100) : 0;
-                        const costChange = coldBaseline.coldStartCostPer1M > 0 ? 
-                            (((config.coldStartCostPer1M - coldBaseline.coldStartCostPer1M) / coldBaseline.coldStartCostPer1M) * 100) : 0;
-                        
-                        console.log(`    ${config.memoryMB.toString().padStart(4)}MB | ${config.coldStartTime.toFixed(0).padStart(8)}ms | $${config.coldStartCostPer1M.toFixed(4).padStart(10)} | ${perfGain >= 0 ? '+' : ''}${perfGain.toFixed(1).padStart(8)}% | ${costChange >= 0 ? '+' : ''}${costChange.toFixed(1).padStart(9)}%`);
-                    });
-                }
-            }
-
-            // Blended Scenarios
-            console.log(`\n  🔀 Basic Functions - Blended Cost Scenarios:`);
-            const scenarioHeaders = this.config.blendedScenarios.map(p => `${(p * 100).toFixed(0)}% Cold`).join(' | ');
-            console.log(`    Memory | ${scenarioHeaders} | Best Use Case`);
-            console.log(`    ──────────────────────────────────────────────────────────────────────`);
-            
-            basicCost.allConfigurations.forEach(config => {
-                let blendedCosts = {};
-                
-                // Calculate blended costs for all configured scenarios
-                this.config.blendedScenarios.forEach(coldPercentage => {
-                    const warmPercentage = 1 - coldPercentage;
-                    if (config.coldStartCostPer1M > 0) {
-                        blendedCosts[coldPercentage] = (config.coldStartCostPer1M * coldPercentage) + (config.costPer1MInvocations * warmPercentage);
-                    } else {
-                        blendedCosts[coldPercentage] = config.costPer1MInvocations; // Default to warm cost
-                    }
-                });
-                
-                // Determine best use case based on actual performance characteristics
-                let useCase = this.determineBestUseCase(config, basicCost);
-                
-                const scenarioColumns = this.config.blendedScenarios.map(p => `$${blendedCosts[p].toFixed(4)}`).join(' | ');
-                console.log(`    ${config.memoryMB.toString().padStart(4)}MB | ${scenarioColumns} | ${useCase}`);
-            });
+        if (analysis.basic) {
+            this.renderFunctionAnalysis('Basic Functions', analysis.basic);
         }
         
-        if (this.testResults.summary.costEfficiencyAnalysis.computation) {
-            const compCost = this.testResults.summary.costEfficiencyAnalysis.computation;
+        if (analysis.computation) {
+            this.renderFunctionAnalysis('Computation Functions', analysis.computation);
+        }
+    }
+
+    renderFunctionAnalysis(functionType, analysisData) {
+        // Warm Start Analysis
+        console.log(`\n  📈 ${functionType} - Warm Start Performance:`);
+        console.log(`    Memory | Warm Time | Warm Cost/1M | Perf Gain | Cost Change`);
+        console.log(`    ────────────────────────────────────────────────────────────`);
+        
+        analysisData.warmStart.forEach(config => {
+            const timeUnit = functionType.includes('Computation') ? '0' : '1';
+            const costPrecision = functionType.includes('Computation') ? '2' : '4';
             
-            // Warm Start Analysis
-            console.log(`\n  📈 Computation Functions - Warm Start Performance:`);
-            console.log(`    Memory | Warm Time | Warm Cost/1M | Perf Gain | Cost Change`);
+            console.log(`    ${config.memoryMB.toString().padStart(4)}MB | ${config.executionTime.toFixed(timeUnit).padStart(8)}ms | $${config.cost.toFixed(costPrecision).padStart(10)} | ${config.performanceGain >= 0 ? '+' : ''}${config.performanceGain.toFixed(1).padStart(8)}% | ${config.costChange >= 0 ? '+' : ''}${config.costChange.toFixed(1).padStart(9)}%`);
+        });
+
+        // Cold Start Analysis (if available)
+        if (analysisData.hasAnyColdStart) {
+            console.log(`\n  ❄️  ${functionType} - Cold Start Performance:`);
+            console.log(`    Memory | Cold Time | Cold Cost/1M | Perf Gain | Cost Change`);
             console.log(`    ────────────────────────────────────────────────────────────`);
             
-            const warmBaseline = compCost.allConfigurations[0];
-            compCost.allConfigurations.forEach(config => {
-                const perfGain = warmBaseline.avgExecutionTime > 0 ? 
-                    (((warmBaseline.avgExecutionTime - config.avgExecutionTime) / warmBaseline.avgExecutionTime) * 100) : 0;
-                const costChange = warmBaseline.costPer1MInvocations > 0 ? 
-                    (((config.costPer1MInvocations - warmBaseline.costPer1MInvocations) / warmBaseline.costPer1MInvocations) * 100) : 0;
-                
-                console.log(`    ${config.memoryMB.toString().padStart(4)}MB | ${config.avgExecutionTime.toFixed(0).padStart(8)}ms | $${config.costPer1MInvocations.toFixed(2).padStart(10)} | ${perfGain >= 0 ? '+' : ''}${perfGain.toFixed(1).padStart(8)}% | ${costChange >= 0 ? '+' : ''}${costChange.toFixed(1).padStart(9)}%`);
-            });
-
-            // Cold Start Analysis (if data available)
-            const hasAnyColdStart = compCost.allConfigurations.some(config => config.coldStartTime !== null);
-            if (hasAnyColdStart) {
-                console.log(`\n  ❄️  Computation Functions - Cold Start Performance:`);
-                console.log(`    Memory | Cold Time | Cold Cost/1M | Perf Gain | Cost Change`);
-                console.log(`    ────────────────────────────────────────────────────────────`);
-                
-                const coldConfigs = compCost.allConfigurations.filter(config => config.coldStartTime !== null);
-                if (coldConfigs.length > 0) {
-                    const coldBaseline = coldConfigs[0];
-                    coldConfigs.forEach(config => {
-                        const perfGain = coldBaseline.coldStartTime > 0 ? 
-                            (((coldBaseline.coldStartTime - config.coldStartTime) / coldBaseline.coldStartTime) * 100) : 0;
-                        const costChange = coldBaseline.coldStartCostPer1M > 0 ? 
-                            (((config.coldStartCostPer1M - coldBaseline.coldStartCostPer1M) / coldBaseline.coldStartCostPer1M) * 100) : 0;
-                        
-                        console.log(`    ${config.memoryMB.toString().padStart(4)}MB | ${config.coldStartTime.toFixed(0).padStart(8)}ms | $${config.coldStartCostPer1M.toFixed(2).padStart(10)} | ${perfGain >= 0 ? '+' : ''}${perfGain.toFixed(1).padStart(8)}% | ${costChange >= 0 ? '+' : ''}${costChange.toFixed(1).padStart(9)}%`);
-                    });
-                }
-            }
-
-            // Blended Scenarios
-            console.log(`\n  🔀 Computation Functions - Blended Cost Scenarios:`);
-            const scenarioHeaders = this.config.blendedScenarios.map(p => `${(p * 100).toFixed(0)}% Cold`).join(' | ');
-            console.log(`    Memory | ${scenarioHeaders} | Best Use Case`);
-            console.log(`    ──────────────────────────────────────────────────────────────────────`);
-            
-            compCost.allConfigurations.forEach(config => {
-                let blendedCosts = {};
-                
-                // Calculate blended costs for all configured scenarios
-                this.config.blendedScenarios.forEach(coldPercentage => {
-                    const warmPercentage = 1 - coldPercentage;
-                    if (config.coldStartCostPer1M > 0) {
-                        blendedCosts[coldPercentage] = (config.coldStartCostPer1M * coldPercentage) + (config.costPer1MInvocations * warmPercentage);
-                    } else {
-                        blendedCosts[coldPercentage] = config.costPer1MInvocations; // Default to warm cost
-                    }
-                });
-                
-                // Determine best use case based on actual performance characteristics
-                let useCase = this.determineBestUseCase(config, compCost);
-                
-                const scenarioColumns = this.config.blendedScenarios.map(p => `$${blendedCosts[p].toFixed(2)}`).join(' | ');
-                console.log(`    ${config.memoryMB.toString().padStart(4)}MB | ${scenarioColumns} | ${useCase}`);
+            analysisData.coldStart.forEach(config => {
+                const costPrecision = functionType.includes('Computation') ? '2' : '4';
+                console.log(`    ${config.memoryMB.toString().padStart(4)}MB | ${config.executionTime.toFixed(0).padStart(8)}ms | $${config.cost.toFixed(costPrecision).padStart(10)} | ${config.performanceGain >= 0 ? '+' : ''}${config.performanceGain.toFixed(1).padStart(8)}% | ${config.costChange >= 0 ? '+' : ''}${config.costChange.toFixed(1).padStart(9)}%`);
             });
         }
+
+        // Blended Scenarios
+        console.log(`\n  🔀 ${functionType} - Blended Cost Scenarios:`);
+        const scenarioHeaders = this.config.blendedScenarios.map(p => `${(p * 100).toFixed(0)}% Cold`).join(' | ');
+        console.log(`    Memory | ${scenarioHeaders} | Best Use Case`);
+        console.log(`    ──────────────────────────────────────────────────────────────────────`);
         
-        // Performance Insights
-        if (this.testResults.summary.performanceInsights.length > 0) {
+        analysisData.blended.forEach(config => {
+            const costPrecision = functionType.includes('Computation') ? '2' : '4';
+            const scenarioColumns = this.config.blendedScenarios.map(p => `$${config.scenarios[p].toFixed(costPrecision)}`).join(' | ');
+            console.log(`    ${config.memoryMB.toString().padStart(4)}MB | ${scenarioColumns} | ${config.useCase}`);
+        });
+    }
+
+    renderInsights(insights) {
+        if (insights.length > 0) {
             console.log('\n💡 Key Performance Insights:');
             console.log('─'.repeat(60));
-            this.testResults.summary.performanceInsights.forEach((insight, index) => {
+            insights.forEach((insight, index) => {
                 console.log(`  ${index + 1}. ${insight}`);
             });
         }
+    }
 
-        // Scenario-based Recommendations
+    renderScenarios(scenarios) {
         console.log('\n🎯 Scenario-based Recommendations:');
         console.log('─'.repeat(60));
         
-        if (this.testResults.summary.costEfficiencyAnalysis.basic) {
-            const basicCost = this.testResults.summary.costEfficiencyAnalysis.basic;
-            const warmOptimal = basicCost.allConfigurations.reduce((best, current) => 
-                current.costPer1MInvocations < best.costPer1MInvocations ? current : best);
-            const perfOptimal = basicCost.allConfigurations.reduce((fastest, current) => 
-                current.avgExecutionTime < fastest.avgExecutionTime ? current : fastest);
-            
+        if (scenarios.basic) {
             console.log(`  📈 Basic Functions:`);
-            console.log(`    • High Frequency (>1000 req/min): ${warmOptimal.memoryMB}MB - Best warm start cost`);
+            console.log(`    • High Frequency (>1000 req/min): ${scenarios.basic.warmOptimal.memoryMB}MB - Best warm start cost`);
             console.log(`    • Balanced Workload (100-1000 req/min): 512MB - Good performance/cost ratio`);
-            console.log(`    • Low Frequency (<100 req/min): ${perfOptimal.memoryMB}MB - Minimize cold start impact`);
+            console.log(`    • Low Frequency (<100 req/min): ${scenarios.basic.perfOptimal.memoryMB}MB - Minimize cold start impact`);
         }
         
-        if (this.testResults.summary.costEfficiencyAnalysis.computation) {
-            const compCost = this.testResults.summary.costEfficiencyAnalysis.computation;
-            const warmOptimal = compCost.allConfigurations.reduce((best, current) => 
-                current.costPer1MInvocations < best.costPer1MInvocations ? current : best);
-            const perfOptimal = compCost.allConfigurations.reduce((fastest, current) => 
-                current.avgExecutionTime < fastest.avgExecutionTime ? current : fastest);
-            
+        if (scenarios.computation) {
             console.log(`  🧮 Computation Functions:`);
-            console.log(`    • High Frequency (>100 req/min): ${warmOptimal.memoryMB}MB - Best warm start cost`);
+            console.log(`    • High Frequency (>100 req/min): ${scenarios.computation.warmOptimal.memoryMB}MB - Best warm start cost`);
             console.log(`    • Balanced Workload (10-100 req/min): 1024MB - Good performance/cost ratio`);
-            console.log(`    • Low Frequency (<10 req/min): ${perfOptimal.memoryMB}MB - Minimize cold start impact`);
+            console.log(`    • Low Frequency (<10 req/min): ${scenarios.computation.perfOptimal.memoryMB}MB - Minimize cold start impact`);
         }
-        
-        // Data Quality Summary
+    }
+
+    renderDataQuality(dataQuality) {
         console.log('\n📈 Data Collection Summary:');
         console.log('─'.repeat(50));
         
-        if (this.testResults.basicFunctions) {
-            console.log(`  Basic Functions: ${this.testResults.basicFunctions.length} memory configurations tested`);
-            this.testResults.basicFunctions.forEach(result => {
-                const coldCount = result.coldStart ? result.coldStart.count : 0;
-                const warmCount = result.warmStart ? result.warmStart.count : 0;
-                console.log(`    • ${result.memoryMB}MB: ${coldCount} cold starts, ${warmCount} warm starts`);
+        if (dataQuality.basic) {
+            console.log(`  Basic Functions: ${dataQuality.basic.totalConfigurations} memory configurations tested`);
+            dataQuality.basic.configurations.forEach(config => {
+                console.log(`    • ${config.memoryMB}MB: ${config.coldCount} cold starts, ${config.warmCount} warm starts`);
             });
         }
         
-        if (this.testResults.computationFunctions) {
-            console.log(`  Computation Functions: ${this.testResults.computationFunctions.length} memory configurations tested`);
-            this.testResults.computationFunctions.forEach(result => {
-                const coldCount = result.coldStart ? result.coldStart.count : 0;
-                const warmCount = result.warmStart ? result.warmStart.count : 0;
-                console.log(`    • ${result.memoryMB}MB: ${coldCount} cold starts, ${warmCount} warm starts`);
+        if (dataQuality.computation) {
+            console.log(`  Computation Functions: ${dataQuality.computation.totalConfigurations} memory configurations tested`);
+            dataQuality.computation.configurations.forEach(config => {
+                console.log(`    • ${config.memoryMB}MB: ${config.coldCount} cold starts, ${config.warmCount} warm starts`);
             });
         }
     }
