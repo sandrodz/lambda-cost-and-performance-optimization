@@ -10,18 +10,36 @@ const { runAllTests: runComputationTests } = require('./test-computation-functio
  * Coordinates execution of specialized test scripts and generates comprehensive reports
  */
 class PerformanceTestRunner {
-    constructor() {
+    constructor(options = {}) {
         this.testResults = {
             timestamp: new Date().toISOString(),
             basicFunctions: null,
             computationFunctions: null,
             summary: {}
         };
+        
+        // Configurable pricing and analysis parameters
+        this.config = {
+            // AWS Lambda pricing per GB-second (as of 2024)
+            lambdaPricePerGbSecond: options.lambdaPricePerGbSecond || 0.0000166667,
+            
+            // Default cold start percentage for blended cost calculations
+            defaultColdStartPercentage: options.defaultColdStartPercentage || 0.1, // 10%
+            
+            // Scale for cost calculations (per X invocations)
+            costCalculationScale: options.costCalculationScale || 1000000, // per 1M invocations
+            
+            // Blended cost scenarios to analyze
+            blendedScenarios: options.blendedScenarios || [0.05, 0.10, 0.20, 0.50] // 5%, 10%, 20%, 50%
+        };
     }
 
     async init() {
         console.log('🚀 Initializing Performance Test Orchestrator...');
         console.log('📋 This runner coordinates test execution and generates comprehensive reports');
+        console.log(`💰 Using Lambda pricing: $${this.config.lambdaPricePerGbSecond} per GB-second`);
+        console.log(`📊 Default blended cost model: ${(this.config.defaultColdStartPercentage * 100)}% cold starts`);
+        console.log(`📈 Cost calculation scale: per ${this.config.costCalculationScale.toLocaleString()} invocations`);
         console.log('✅ Performance Test Runner initialized successfully');
     }
 
@@ -139,9 +157,12 @@ class PerformanceTestRunner {
 
         results.forEach(result => {
             if (result.warmStart) {
-                // AWS Lambda pricing: $0.0000166667 per GB-second
-                const warmGbSeconds = (result.memoryMB / 1024) * (result.warmStart.average / 1000);
-                const warmCostPer1MInvocations = warmGbSeconds * 0.0000166667 * 1000000;
+                // Calculate warm start cost using configurable pricing
+                // Convert memory from MB to GB (1 GB = 1024 MB) and execution time from ms to seconds
+                const memoryGB = result.memoryMB / 1024; // MB to GB conversion
+                const executionTimeSeconds = result.warmStart.average / 1000; // ms to seconds conversion
+                const warmGbSeconds = memoryGB * executionTimeSeconds;
+                const warmCostPer1MInvocations = warmGbSeconds * this.config.lambdaPricePerGbSecond * this.config.costCalculationScale;
                 
                 let coldGbSeconds = 0;
                 let coldCostPer1MInvocations = 0;
@@ -149,11 +170,14 @@ class PerformanceTestRunner {
                 
                 // Calculate cold start cost if data is available
                 if (result.coldStart && result.coldStart.average > 0) {
-                    coldGbSeconds = (result.memoryMB / 1024) * (result.coldStart.average / 1000);
-                    coldCostPer1MInvocations = coldGbSeconds * 0.0000166667 * 1000000;
+                    const coldExecutionTimeSeconds = result.coldStart.average / 1000; // ms to seconds conversion
+                    coldGbSeconds = memoryGB * coldExecutionTimeSeconds;
+                    coldCostPer1MInvocations = coldGbSeconds * this.config.lambdaPricePerGbSecond * this.config.costCalculationScale;
                     
-                    // Blended cost assuming 10% cold starts, 90% warm starts (typical for many workloads)
-                    blendedCostPer1MInvocations = (coldCostPer1MInvocations * 0.1) + (warmCostPer1MInvocations * 0.9);
+                    // Blended cost using configurable cold start percentage
+                    const coldPercentage = this.config.defaultColdStartPercentage;
+                    const warmPercentage = 1 - coldPercentage;
+                    blendedCostPer1MInvocations = (coldCostPer1MInvocations * coldPercentage) + (warmCostPer1MInvocations * warmPercentage);
                 }
                 
                 costAnalysis.push({
@@ -163,7 +187,7 @@ class PerformanceTestRunner {
                     costPer1MInvocations: warmCostPer1MInvocations,
                     coldStartCostPer1M: coldCostPer1MInvocations,
                     blendedCostPer1M: blendedCostPer1MInvocations,
-                    costEfficiencyScore: 1000000 / blendedCostPer1MInvocations // Higher is better, using blended cost
+                    costEfficiencyScore: this.config.costCalculationScale / blendedCostPer1MInvocations // Higher is better, using blended cost
                 });
             }
         });
@@ -330,28 +354,30 @@ class PerformanceTestRunner {
 
             // Blended Scenarios
             console.log(`\n  🔀 Basic Functions - Blended Cost Scenarios:`);
-            console.log(`    Memory | 5% Cold | 10% Cold | 20% Cold | 50% Cold | Best Use Case`);
+            const scenarioHeaders = this.config.blendedScenarios.map(p => `${(p * 100).toFixed(0)}% Cold`).join(' | ');
+            console.log(`    Memory | ${scenarioHeaders} | Best Use Case`);
             console.log(`    ──────────────────────────────────────────────────────────────────────`);
             
             basicCost.allConfigurations.forEach(config => {
-                let blended5 = config.costPer1MInvocations; // Default to warm cost
-                let blended10 = config.costPer1MInvocations;
-                let blended20 = config.costPer1MInvocations;
-                let blended50 = config.costPer1MInvocations;
+                let blendedCosts = {};
                 
-                if (config.coldStartCostPer1M > 0) {
-                    blended5 = (config.coldStartCostPer1M * 0.05) + (config.costPer1MInvocations * 0.95);
-                    blended10 = (config.coldStartCostPer1M * 0.10) + (config.costPer1MInvocations * 0.90);
-                    blended20 = (config.coldStartCostPer1M * 0.20) + (config.costPer1MInvocations * 0.80);
-                    blended50 = (config.coldStartCostPer1M * 0.50) + (config.costPer1MInvocations * 0.50);
-                }
+                // Calculate blended costs for all configured scenarios
+                this.config.blendedScenarios.forEach(coldPercentage => {
+                    const warmPercentage = 1 - coldPercentage;
+                    if (config.coldStartCostPer1M > 0) {
+                        blendedCosts[coldPercentage] = (config.coldStartCostPer1M * coldPercentage) + (config.costPer1MInvocations * warmPercentage);
+                    } else {
+                        blendedCosts[coldPercentage] = config.costPer1MInvocations; // Default to warm cost
+                    }
+                });
                 
                 // Determine best use case
                 let useCase = 'High frequency';
                 if (config.memoryMB >= 1024) useCase = 'Balanced workload';
                 if (config.memoryMB >= 2048) useCase = 'Cold start sensitive';
                 
-                console.log(`    ${config.memoryMB.toString().padStart(4)}MB | $${blended5.toFixed(4)} | $${blended10.toFixed(4)} | $${blended20.toFixed(4)} | $${blended50.toFixed(4)} | ${useCase}`);
+                const scenarioColumns = this.config.blendedScenarios.map(p => `$${blendedCosts[p].toFixed(4)}`).join(' | ');
+                console.log(`    ${config.memoryMB.toString().padStart(4)}MB | ${scenarioColumns} | ${useCase}`);
             });
         }
         
@@ -396,28 +422,30 @@ class PerformanceTestRunner {
 
             // Blended Scenarios
             console.log(`\n  🔀 Computation Functions - Blended Cost Scenarios:`);
-            console.log(`    Memory | 5% Cold | 10% Cold | 20% Cold | 50% Cold | Best Use Case`);
+            const scenarioHeaders = this.config.blendedScenarios.map(p => `${(p * 100).toFixed(0)}% Cold`).join(' | ');
+            console.log(`    Memory | ${scenarioHeaders} | Best Use Case`);
             console.log(`    ──────────────────────────────────────────────────────────────────────`);
             
             compCost.allConfigurations.forEach(config => {
-                let blended5 = config.costPer1MInvocations; // Default to warm cost
-                let blended10 = config.costPer1MInvocations;
-                let blended20 = config.costPer1MInvocations;
-                let blended50 = config.costPer1MInvocations;
+                let blendedCosts = {};
                 
-                if (config.coldStartCostPer1M > 0) {
-                    blended5 = (config.coldStartCostPer1M * 0.05) + (config.costPer1MInvocations * 0.95);
-                    blended10 = (config.coldStartCostPer1M * 0.10) + (config.costPer1MInvocations * 0.90);
-                    blended20 = (config.coldStartCostPer1M * 0.20) + (config.costPer1MInvocations * 0.80);
-                    blended50 = (config.coldStartCostPer1M * 0.50) + (config.costPer1MInvocations * 0.50);
-                }
+                // Calculate blended costs for all configured scenarios
+                this.config.blendedScenarios.forEach(coldPercentage => {
+                    const warmPercentage = 1 - coldPercentage;
+                    if (config.coldStartCostPer1M > 0) {
+                        blendedCosts[coldPercentage] = (config.coldStartCostPer1M * coldPercentage) + (config.costPer1MInvocations * warmPercentage);
+                    } else {
+                        blendedCosts[coldPercentage] = config.costPer1MInvocations; // Default to warm cost
+                    }
+                });
                 
                 // Determine best use case
                 let useCase = 'High frequency';
                 if (config.memoryMB >= 1024) useCase = 'Balanced workload';
                 if (config.memoryMB >= 2048) useCase = 'Cold start sensitive';
                 
-                console.log(`    ${config.memoryMB.toString().padStart(4)}MB | $${blended5.toFixed(2)} | $${blended10.toFixed(2)} | $${blended20.toFixed(2)} | $${blended50.toFixed(2)} | ${useCase}`);
+                const scenarioColumns = this.config.blendedScenarios.map(p => `$${blendedCosts[p].toFixed(2)}`).join(' | ');
+                console.log(`    ${config.memoryMB.toString().padStart(4)}MB | ${scenarioColumns} | ${useCase}`);
             });
         }
         
