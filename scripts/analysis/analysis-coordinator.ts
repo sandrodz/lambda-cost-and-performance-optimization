@@ -1,12 +1,32 @@
-const CostAnalyzer = require('./cost-analyzer');
-const PerformanceInsightsAnalyzer = require('./performance-insights-analyzer');
-
 /**
  * Analysis Coordinator
  * Orchestrates all analysis operations using specialized analyzers
  */
+
+import CostAnalyzer from './cost-analyzer';
+import PerformanceInsightsAnalyzer from './performance-insights-analyzer';
+import {
+    TestConfig,
+    TestResults,
+    TestSummary,
+    CostAnalyzerOutput,
+    CostEfficiencyAnalysis,
+    FunctionAnalysisData,
+    PerformanceDataPoint,
+    BlendedDataPoint,
+    OverviewData,
+    RecommendationsData,
+    AnalysisData,
+    ScenarioData,
+    DataQualityData
+} from '../types';
+
 class AnalysisCoordinator {
-    constructor(config) {
+    private config: TestConfig;
+    private costAnalyzer: CostAnalyzer;
+    private insightsAnalyzer: PerformanceInsightsAnalyzer;
+
+    constructor(config: TestConfig) {
         this.config = config;
         this.costAnalyzer = new CostAnalyzer(config);
         this.insightsAnalyzer = new PerformanceInsightsAnalyzer(config);
@@ -15,28 +35,40 @@ class AnalysisCoordinator {
     /**
      * Generate comprehensive summary analysis
      */
-    generateSummaryAnalysis(testResults) {
+    generateSummaryAnalysis(testResults: TestResults): TestSummary {
         console.log('\n📊 Generating Summary Analysis...');
         
-        const summary = {
+        const summary: TestSummary = {
             totalFunctionsTested: 0,
             optimalMemoryConfigurations: {},
             costEfficiencyAnalysis: {},
-            performanceInsights: {}
+            performanceInsights: []
         };
 
         // Analyze basic functions
         if (testResults.basicFunctions) {
             summary.totalFunctionsTested += testResults.basicFunctions.length;
-            summary.optimalMemoryConfigurations.basic = this.costAnalyzer.findOptimalMemoryConfig(testResults.basicFunctions);
-            summary.costEfficiencyAnalysis.basic = this.costAnalyzer.analyzeCostEfficiency(testResults.basicFunctions, 'basic');
+            const basicOptimal = this.costAnalyzer.findOptimalMemoryConfig(testResults.basicFunctions);
+            if (basicOptimal) {
+                summary.optimalMemoryConfigurations.basic = basicOptimal;
+            }
+            const basicCostAnalysis = this.costAnalyzer.analyzeCostEfficiency(testResults.basicFunctions);
+            if (basicCostAnalysis) {
+                summary.costEfficiencyAnalysis.basic = basicCostAnalysis;
+            }
         }
 
         // Analyze computation functions
         if (testResults.computationFunctions) {
             summary.totalFunctionsTested += testResults.computationFunctions.length;
-            summary.optimalMemoryConfigurations.computation = this.costAnalyzer.findOptimalMemoryConfig(testResults.computationFunctions);
-            summary.costEfficiencyAnalysis.computation = this.costAnalyzer.analyzeCostEfficiency(testResults.computationFunctions, 'computation');
+            const computationOptimal = this.costAnalyzer.findOptimalMemoryConfig(testResults.computationFunctions);
+            if (computationOptimal) {
+                summary.optimalMemoryConfigurations.computation = computationOptimal;
+            }
+            const computationCostAnalysis = this.costAnalyzer.analyzeCostEfficiency(testResults.computationFunctions);
+            if (computationCostAnalysis) {
+                summary.costEfficiencyAnalysis.computation = computationCostAnalysis;
+            }
         }
 
         // Generate performance insights
@@ -48,10 +80,10 @@ class AnalysisCoordinator {
     /**
      * Generate function analysis data for reporting
      */
-    generateFunctionAnalysisData(costAnalysis, functionType) {
+    generateFunctionAnalysisData(costAnalysis: CostAnalyzerOutput, _functionType?: string): FunctionAnalysisData {
         const warmBaseline = costAnalysis.allConfigurations[0];
         
-        const warmStartData = costAnalysis.allConfigurations.map(config => ({
+        const warmStartData: PerformanceDataPoint[] = costAnalysis.allConfigurations.map(config => ({
             memoryMB: config.memoryMB,
             executionTime: config.avgExecutionTime,
             cost: config.costPer1MInvocations,
@@ -63,23 +95,23 @@ class AnalysisCoordinator {
 
         // Cold start data (if available)
         const coldConfigs = costAnalysis.allConfigurations.filter(config => config.coldStartTime !== null);
-        let coldStartData = [];
+        let coldStartData: PerformanceDataPoint[] = [];
         if (coldConfigs.length > 0) {
             const coldBaseline = coldConfigs[0];
             coldStartData = coldConfigs.map(config => ({
                 memoryMB: config.memoryMB,
-                executionTime: config.coldStartTime,
+                executionTime: config.coldStartTime!,
                 cost: config.coldStartCostPer1M,
-                performanceGain: coldBaseline.coldStartTime > 0 ? 
-                    (((coldBaseline.coldStartTime - config.coldStartTime) / coldBaseline.coldStartTime) * 100) : 0,
+                performanceGain: coldBaseline.coldStartTime! > 0 ? 
+                    (((coldBaseline.coldStartTime! - config.coldStartTime!) / coldBaseline.coldStartTime!) * 100) : 0,
                 costChange: coldBaseline.coldStartCostPer1M > 0 ? 
                     (((config.coldStartCostPer1M - coldBaseline.coldStartCostPer1M) / coldBaseline.coldStartCostPer1M) * 100) : 0
             }));
         }
 
         // Blended scenarios data
-        const blendedData = costAnalysis.allConfigurations.map(config => {
-            const scenarios = {};
+        const blendedData: BlendedDataPoint[] = costAnalysis.allConfigurations.map(config => {
+            const scenarios: { [coldPercentage: number]: number } = {};
             this.config.blendedScenarios.forEach(coldPercentage => {
                 const warmPercentage = 1 - coldPercentage;
                 if (config.coldStartCostPer1M > 0) {
@@ -107,23 +139,23 @@ class AnalysisCoordinator {
     /**
      * Generate scenario optimization data
      */
-    generateScenarioData(costEfficiencyAnalysis) {
+    generateScenarioData(costEfficiencyAnalysis: CostEfficiencyAnalysis): ScenarioData {
         return this.insightsAnalyzer.generateScenarioOptimizations(costEfficiencyAnalysis);
     }
 
     /**
      * Generate data quality analysis
      */
-    generateDataQualityData(testResults) {
+    generateDataQualityData(testResults: TestResults): DataQualityData {
         return this.insightsAnalyzer.analyzeDataQuality(testResults);
     }
 
     /**
      * Generate overview data for reporting
      */
-    generateOverviewData(testResults) {
+    generateOverviewData(testResults: TestResults): OverviewData {
         return {
-            timestamp: new Date(testResults.timestamp).toLocaleString(),
+            timestamp: testResults.timestamp,
             totalFunctionsTested: testResults.summary.totalFunctionsTested,
             testTypes: {
                 basic: testResults.basicFunctions ? testResults.basicFunctions.length : 0,
@@ -135,8 +167,8 @@ class AnalysisCoordinator {
     /**
      * Generate recommendations data for reporting
      */
-    generateRecommendationsData(testResults) {
-        const recommendations = {};
+    generateRecommendationsData(testResults: TestResults): RecommendationsData {
+        const recommendations: RecommendationsData = {};
         
         if (testResults.summary.optimalMemoryConfigurations.basic) {
             recommendations.basic = testResults.summary.optimalMemoryConfigurations.basic;
@@ -152,8 +184,8 @@ class AnalysisCoordinator {
     /**
      * Generate analysis data for reporting
      */
-    generateAnalysisData(testResults) {
-        const analysis = {};
+    generateAnalysisData(testResults: TestResults): AnalysisData {
+        const analysis: AnalysisData = {};
         
         if (testResults.summary.costEfficiencyAnalysis.basic) {
             analysis.basic = this.generateFunctionAnalysisData(testResults.summary.costEfficiencyAnalysis.basic, 'basic');
@@ -167,4 +199,4 @@ class AnalysisCoordinator {
     }
 }
 
-module.exports = AnalysisCoordinator;
+export default AnalysisCoordinator;

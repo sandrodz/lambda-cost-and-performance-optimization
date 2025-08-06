@@ -1,27 +1,47 @@
-const fs = require('fs');
-const path = require('path');
-
-// Import individual test modules
-const { runAllTests: runBasicTests } = require('./test-basic-functions');
-const { runAllTests: runComputationTests } = require('./test-computation-functions');
-
-// Import analysis modules
-const AnalysisCoordinator = require('./analysis/analysis-coordinator');
-
-// Import reporting modules
-const ReportGenerator = require('./reporting/report-generator');
-
 /**
  * Performance Test Orchestrator
  * Coordinates execution of specialized test scripts and generates comprehensive reports
  */
+
+import fs from 'fs';
+
+// Import analysis modules  
+import AnalysisCoordinator from './analysis/analysis-coordinator';
+
+// Import reporting modules
+import ReportGenerator from './reporting/report-generator';
+
+// Import types
+import { 
+    TestResults, 
+    TestConfig, 
+    SaveResultsResponse
+} from './types';
+
+export interface PerformanceTestRunnerOptions {
+    lambdaPricePerGbSecond?: number;
+    defaultColdStartPercentage?: number;
+    costCalculationScale?: number;
+    blendedScenarios?: number[];
+}
+
 class PerformanceTestRunner {
-    constructor(options = {}) {
+    private testResults: TestResults;
+    private config: TestConfig;
+    private analysisCoordinator: AnalysisCoordinator;
+    private reportGenerator: ReportGenerator;
+
+    constructor(options: PerformanceTestRunnerOptions = {}) {
         this.testResults = {
             timestamp: new Date().toISOString(),
             basicFunctions: null,
             computationFunctions: null,
-            summary: {}
+            summary: {
+                totalFunctionsTested: 0,
+                optimalMemoryConfigurations: {},
+                costEfficiencyAnalysis: {},
+                performanceInsights: []
+            }
         };
         
         // Configurable pricing and analysis parameters
@@ -46,7 +66,7 @@ class PerformanceTestRunner {
         this.reportGenerator = new ReportGenerator(this.config, this.analysisCoordinator);
     }
 
-    async init() {
+    init(): void {
         console.log('🚀 Initializing Performance Test Orchestrator...');
         console.log('📋 This runner coordinates test execution and generates comprehensive reports');
         console.log(`💰 Using Lambda pricing: $${this.config.lambdaPricePerGbSecond} per GB-second`);
@@ -55,14 +75,15 @@ class PerformanceTestRunner {
         console.log('✅ Performance Test Runner initialized successfully');
     }
 
-    async runComprehensiveTests() {
+    async runComprehensiveTests(): Promise<TestResults> {
         console.log('\n🧪 Starting Comprehensive Performance Testing...');
-        console.log('=' .repeat(60));
+        console.log('='.repeat(60));
         
         try {
             // Run basic function tests
             console.log('\n🎯 Executing Basic Function Tests...');
-            this.testResults.basicFunctions = await runBasicTests();
+            const basicTestModule = require('./test-basic-functions.js');
+            this.testResults.basicFunctions = await basicTestModule.runAllTests();
             
             // Add delay between test suites
             console.log('\n⏱️  Waiting 30 seconds before computation tests...');
@@ -70,7 +91,8 @@ class PerformanceTestRunner {
             
             // Run computation function tests
             console.log('\n🧮 Executing Heavy Computation Tests...');
-            this.testResults.computationFunctions = await runComputationTests();
+            const computationTestModule = require('./test-computation-functions.js');
+            this.testResults.computationFunctions = await computationTestModule.runAllTests();
             
             // Generate comprehensive analysis
             this.testResults.summary = this.analysisCoordinator.generateSummaryAnalysis(this.testResults);
@@ -79,16 +101,16 @@ class PerformanceTestRunner {
             return this.testResults;
             
         } catch (error) {
-            console.error('\n❌ Test execution failed:', error.message);
+            console.error('\n❌ Test execution failed:', (error as Error).message);
             throw error;
         }
     }
 
-    sleep(ms) {
+    private sleep(ms: number): Promise<void> {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 
-    saveResults() {
+    saveResults(): SaveResultsResponse {
         console.log('\n💾 Saving Test Results...');
         
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -119,23 +141,27 @@ class PerformanceTestRunner {
         
         return { dataFile: filename, summaryFile: summaryFilename };
     }
+
+    generateAndRenderReport(testResults: TestResults): void {
+        this.reportGenerator.generateComprehensiveReportAndRender(testResults);
+    }
 }
 
 // Main execution function
-async function main() {
+async function main(): Promise<TestResults> {
     const testRunner = new PerformanceTestRunner();
     
     try {
-        await testRunner.init();
+        testRunner.init();
         
         // Run comprehensive test suite
         const results = await testRunner.runComprehensiveTests();
 
         // Generate and display comprehensive report
-        testRunner.reportGenerator.generateComprehensiveReportAndRender(results);
+        testRunner.generateAndRenderReport(results);
         
         // Save all results
-        const savedFiles = testRunner.saveResults();
+        testRunner.saveResults();
         
         console.log('\n🎉 Comprehensive Performance Analysis Completed!');
         console.log('📋 All test data has been collected and analyzed');
@@ -154,4 +180,4 @@ if (require.main === module) {
     main();
 }
 
-module.exports = PerformanceTestRunner;
+export default PerformanceTestRunner;

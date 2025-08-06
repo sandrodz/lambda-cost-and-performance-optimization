@@ -1,12 +1,17 @@
-const ConsoleReportRenderer = require('./console-report-renderer');
-
 /**
  * Report Generator
  * Coordinates report data generation and rendering across multiple output formats
  */
+
+import { TestConfig, TestResults, ReportData } from '../types';
+import AnalysisCoordinator from '../analysis/analysis-coordinator';
+import ConsoleReportRenderer from './console-report-renderer';
+
 class ReportGenerator {
-    constructor(config, analysisCoordinator) {
-        this.config = config;
+    private analysisCoordinator: AnalysisCoordinator;
+    private consoleRenderer: ConsoleReportRenderer;
+
+    constructor(config: TestConfig, analysisCoordinator: AnalysisCoordinator) {
         this.analysisCoordinator = analysisCoordinator;
         this.consoleRenderer = new ConsoleReportRenderer(config);
     }
@@ -14,9 +19,9 @@ class ReportGenerator {
     /**
      * Generate comprehensive report and display to console
      */
-    generateComprehensiveReportAndRender(testResults) {
+    generateComprehensiveReportAndRender(testResults: TestResults): ReportData {
         console.log('\n📊 Comprehensive Performance Report');
-        console.log('=' .repeat(80));
+        console.log('='.repeat(80));
         
         // Generate all analysis data objects using the analysis coordinator
         const reportData = this.getReportData(testResults);
@@ -30,14 +35,14 @@ class ReportGenerator {
     /**
      * Generate report content as text (for file saving)
      */
-    generateReportText(testResults) {
+    generateReportText(testResults: TestResults): string {
         const reportData = this.getReportData(testResults);
         
         let reportContent = '';
         const originalLog = console.log;
         
         // Capture console output as text
-        console.log = (...args) => {
+        console.log = (...args: any[]) => {
             reportContent += args.join(' ') + '\n';
         };
         
@@ -53,7 +58,7 @@ class ReportGenerator {
     /**
      * Get report data without rendering (for programmatic access)
      */
-    getReportData(testResults) {
+    getReportData(testResults: TestResults): ReportData {
         return {
             overview: this.analysisCoordinator.generateOverviewData(testResults),
             recommendations: this.analysisCoordinator.generateRecommendationsData(testResults),
@@ -65,4 +70,4 @@ class ReportGenerator {
     }
 }
 
-module.exports = ReportGenerator;
+export default ReportGenerator;

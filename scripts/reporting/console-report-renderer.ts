@@ -2,15 +2,27 @@
  * Console Report Renderer
  * Handles all console output formatting for performance reports
  */
+
+import {
+    TestConfig,
+    ReportData,
+    OverviewData,
+    RecommendationsData,
+    AnalysisData,
+    FunctionAnalysisData,
+    ScenarioData,
+    DataQualityData
+} from '../types';
+
 class ConsoleReportRenderer {
-    constructor(config) {
-        this.config = config;
+    constructor(_config: TestConfig) {
+        // Configuration received but not stored as it's not used in current implementation
     }
 
     /**
      * Render the complete report to console
      */
-    renderReport(reportData) {
+    renderReport(reportData: ReportData): void {
         this.renderOverview(reportData.overview);
         this.renderRecommendations(reportData.recommendations);
         this.renderAnalysis(reportData.analysis);
@@ -22,7 +34,7 @@ class ConsoleReportRenderer {
     /**
      * Render test overview section
      */
-    renderOverview(overview) {
+    private renderOverview(overview: OverviewData): void {
         console.log('\n📋 Test Overview:');
         console.log(`  • Test Timestamp: ${overview.timestamp}`);
         console.log(`  • Total Functions Tested: ${overview.totalFunctionsTested}`);
@@ -33,7 +45,7 @@ class ConsoleReportRenderer {
     /**
      * Render memory configuration recommendations
      */
-    renderRecommendations(recommendations) {
+    private renderRecommendations(recommendations: RecommendationsData): void {
         console.log('\n🎯 Recommended Memory Configurations (Balanced):');
         console.log('─'.repeat(55));
         
@@ -67,7 +79,7 @@ class ConsoleReportRenderer {
     /**
      * Render detailed cost vs performance analysis
      */
-    renderAnalysis(analysis) {
+    private renderAnalysis(analysis: AnalysisData): void {
         console.log('\n💰 Detailed Cost vs Performance Analysis:');
         console.log('─'.repeat(80));
         
@@ -83,69 +95,66 @@ class ConsoleReportRenderer {
     /**
      * Render function-specific analysis tables
      */
-    renderFunctionAnalysis(functionType, analysisData) {
+    private renderFunctionAnalysis(functionType: string, analysisData: FunctionAnalysisData): void {
         // Warm Start Analysis
         console.log(`\n  📈 ${functionType} - Warm Start Performance:`);
         console.log(`    Memory | Warm Time | Warm Cost/1M | Perf Gain | Cost Change`);
         console.log(`    ────────────────────────────────────────────────────────────`);
         
         analysisData.warmStart.forEach(config => {
-            const timeUnit = functionType.includes('Computation') ? '0' : '1';
-            const costPrecision = functionType.includes('Computation') ? '2' : '4';
+            const timePrecision = functionType.includes('Computation') ? 0 : 1;
+            const costPrecision = functionType.includes('Computation') ? 2 : 4;
             
-            console.log(`    ${config.memoryMB.toString().padStart(4)}MB | ${config.executionTime.toFixed(timeUnit).padStart(8)}ms | $${config.cost.toFixed(costPrecision).padStart(10)} | ${config.performanceGain >= 0 ? '+' : ''}${config.performanceGain.toFixed(1).padStart(8)}% | ${config.costChange >= 0 ? '+' : ''}${config.costChange.toFixed(1).padStart(9)}%`);
+            console.log(`    ${config.memoryMB.toString().padStart(4)}MB | ${config.executionTime.toFixed(timePrecision).padStart(8)}ms | $${config.cost.toFixed(costPrecision).padStart(10)} | ${config.performanceGain >= 0 ? '+' : ''}${config.performanceGain.toFixed(1).padStart(8)}% | ${config.costChange >= 0 ? '+' : ''}${config.costChange.toFixed(1).padStart(9)}%`);
         });
 
         // Cold Start Analysis (if available)
         if (analysisData.hasAnyColdStart) {
-            console.log(`\n  ❄️  ${functionType} - Cold Start Performance:`);
+            console.log(`\n  🔥 ${functionType} - Cold Start Performance:`);
             console.log(`    Memory | Cold Time | Cold Cost/1M | Perf Gain | Cost Change`);
             console.log(`    ────────────────────────────────────────────────────────────`);
             
             analysisData.coldStart.forEach(config => {
-                const costPrecision = functionType.includes('Computation') ? '2' : '4';
-                console.log(`    ${config.memoryMB.toString().padStart(4)}MB | ${config.executionTime.toFixed(0).padStart(8)}ms | $${config.cost.toFixed(costPrecision).padStart(10)} | ${config.performanceGain >= 0 ? '+' : ''}${config.performanceGain.toFixed(1).padStart(8)}% | ${config.costChange >= 0 ? '+' : ''}${config.costChange.toFixed(1).padStart(9)}%`);
+                const timePrecision = functionType.includes('Computation') ? 0 : 1;
+                const costPrecision = functionType.includes('Computation') ? 2 : 4;
+                
+                console.log(`    ${config.memoryMB.toString().padStart(4)}MB | ${config.executionTime.toFixed(timePrecision).padStart(8)}ms | $${config.cost.toFixed(costPrecision).padStart(10)} | ${config.performanceGain >= 0 ? '+' : ''}${config.performanceGain.toFixed(1).padStart(8)}% | ${config.costChange >= 0 ? '+' : ''}${config.costChange.toFixed(1).padStart(9)}%`);
             });
         }
 
-        // Blended Scenarios
-        console.log(`\n  🔀 ${functionType} - Blended Cost Scenarios:`);
-        const scenarioHeaders = this.config.blendedScenarios.map(p => `${(p * 100).toFixed(0)}% Cold`).join(' | ');
-        console.log(`    Memory | ${scenarioHeaders} | Best Use Case`);
-        console.log(`    ──────────────────────────────────────────────────────────────────────`);
+        // Blended Analysis (realistic workload scenarios)
+        console.log(`\n  ⚖️ ${functionType} - Blended Cost Analysis (Real-world scenarios):`);
+        console.log(`    Memory | Use Case`);
+        console.log(`    ──────────────────────────────────────────────────`);
         
         analysisData.blended.forEach(config => {
-            const costPrecision = functionType.includes('Computation') ? '2' : '4';
-            const scenarioColumns = this.config.blendedScenarios.map(p => `$${config.scenarios[p].toFixed(costPrecision)}`).join(' | ');
-            console.log(`    ${config.memoryMB.toString().padStart(4)}MB | ${scenarioColumns} | ${config.useCase}`);
+            console.log(`    ${config.memoryMB.toString().padStart(4)}MB | ${config.useCase}`);
         });
     }
 
     /**
      * Render performance insights
      */
-    renderInsights(insights) {
-        if (insights.length > 0) {
-            console.log('\n💡 Key Performance Insights:');
-            console.log('─'.repeat(60));
-            insights.forEach((insight, index) => {
-                console.log(`  ${index + 1}. ${insight}`);
-            });
-        }
+    private renderInsights(insights: string[]): void {
+        console.log('\n💡 Performance Insights:');
+        console.log('─'.repeat(30));
+        insights.forEach(insight => {
+            console.log(`  • ${insight}`);
+        });
     }
 
     /**
-     * Render scenario-based recommendations
+     * Render usage scenario recommendations
      */
-    renderScenarios(scenarios) {
-        console.log('\n🎯 Scenario-based Recommendations:');
-        console.log('─'.repeat(60));
+    private renderScenarios(scenarios: ScenarioData): void {
+        console.log('\n🎭 Usage Scenario Recommendations:');
+        console.log('─'.repeat(50));
         
         if (scenarios.basic) {
-            console.log(`  📈 Basic Functions:`);
-            console.log(`    • High Frequency (>1000 req/min): ${scenarios.basic.warmOptimal.memoryMB}MB - Best warm start cost`);
-            console.log(`    • Balanced Workload (100-1000 req/min): 512MB - Good performance/cost ratio`);
-            console.log(`    • Low Frequency (<100 req/min): ${scenarios.basic.perfOptimal.memoryMB}MB - Minimize cold start impact`);
+            console.log(`  📄 Basic Functions:`);
+            console.log(`    • High Frequency (>100 req/min): ${scenarios.basic.warmOptimal.memoryMB}MB - Best warm start cost`);
+            console.log(`    • Balanced Workload (10-100 req/min): 1024MB - Good performance/cost ratio`);
+            console.log(`    • Low Frequency (<10 req/min): ${scenarios.basic.perfOptimal.memoryMB}MB - Minimize cold start impact`);
         }
         
         if (scenarios.computation) {
@@ -159,7 +168,7 @@ class ConsoleReportRenderer {
     /**
      * Render data quality summary
      */
-    renderDataQuality(dataQuality) {
+    private renderDataQuality(dataQuality: DataQualityData): void {
         console.log('\n📈 Data Collection Summary:');
         console.log('─'.repeat(50));
         
@@ -179,4 +188,4 @@ class ConsoleReportRenderer {
     }
 }
 
-module.exports = ConsoleReportRenderer;
+export default ConsoleReportRenderer;

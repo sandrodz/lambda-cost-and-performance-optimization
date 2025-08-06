@@ -2,22 +2,33 @@
  * Cost Analysis Engine
  * Handles all cost efficiency calculations and performance analysis
  */
+
+import {
+    TestConfig,
+    FunctionTestResult,
+    CostAnalysisConfig,
+    OptimalMemoryConfig,
+    CostAnalyzerOutput
+} from '../types';
+
 class CostAnalyzer {
-    constructor(config) {
+    private config: TestConfig;
+
+    constructor(config: TestConfig) {
         this.config = config;
     }
 
     /**
      * Find the optimal memory configuration based on balanced scoring
      */
-    findOptimalMemoryConfig(results) {
-        if (!results || results.length === 0) return null;
+    findOptimalMemoryConfig(results: FunctionTestResult[]): OptimalMemoryConfig | null {
+        if (results.length === 0) return null;
 
-        let bestConfig = null;
+        let bestConfig: OptimalMemoryConfig | null = null;
         let bestScore = 0;
 
         // First, calculate cost efficiency for each configuration
-        const costAnalysis = this.analyzeCostEfficiency(results, 'temp');
+        const costAnalysis = this.analyzeCostEfficiency(results);
         if (!costAnalysis) return null;
 
         results.forEach(result => {
@@ -61,10 +72,10 @@ class CostAnalyzer {
     /**
      * Analyze cost efficiency across all memory configurations
      */
-    analyzeCostEfficiency(results, functionType) {
-        if (!results || results.length === 0) return null;
+    analyzeCostEfficiency(results: FunctionTestResult[]): CostAnalyzerOutput | null {
+        if (results.length === 0) return null;
 
-        const costAnalysis = [];
+        const costAnalysis: CostAnalysisConfig[] = [];
 
         results.forEach(result => {
             if (result.warmStart) {
@@ -118,13 +129,13 @@ class CostAnalyzer {
     /**
      * Determine best use case based on actual performance characteristics
      */
-    determineBestUseCase(config, costAnalysis) {
+    determineBestUseCase(config: CostAnalysisConfig, costAnalysis: CostAnalyzerOutput): string {
         const allConfigs = costAnalysis.allConfigurations;
         
         // Find optimal configurations for different scenarios
-        const warmOptimal = allConfigs.reduce((best, current) => 
+        const warmOptimal = allConfigs.reduce((best: CostAnalysisConfig, current: CostAnalysisConfig) => 
             current.costPer1MInvocations < best.costPer1MInvocations ? current : best);
-        const perfOptimal = allConfigs.reduce((fastest, current) => 
+        const perfOptimal = allConfigs.reduce((fastest: CostAnalysisConfig, current: CostAnalysisConfig) => 
             current.avgExecutionTime < fastest.avgExecutionTime ? current : fastest);
         const mostCostEfficient = costAnalysis.mostCostEfficient;
         
@@ -137,7 +148,7 @@ class CostAnalyzer {
             return 'Most cost efficient (blended)';
         } else {
             // Analyze position in the cost/performance spectrum
-            const costRank = allConfigs.findIndex(c => c.memoryMB === config.memoryMB);
+            const costRank = allConfigs.findIndex((c: CostAnalysisConfig) => c.memoryMB === config.memoryMB);
             const totalConfigs = allConfigs.length;
             
             if (costRank < totalConfigs / 3) {
@@ -151,4 +162,4 @@ class CostAnalyzer {
     }
 }
 
-module.exports = CostAnalyzer;
+export default CostAnalyzer;

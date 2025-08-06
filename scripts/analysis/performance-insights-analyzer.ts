@@ -2,16 +2,27 @@
  * Performance Insights Generator
  * Analyzes test results and generates actionable insights
  */
+
+import {
+    TestConfig,
+    TestResults,
+    TestSummary,
+    CostEfficiencyAnalysis,
+    CostAnalyzerOutput,
+    ScenarioData,
+    DataQualityData
+} from '../types';
+
 class PerformanceInsightsAnalyzer {
-    constructor(config) {
-        this.config = config;
+    constructor(_config: TestConfig) {
+        // Config stored but not currently used in this analyzer
     }
 
     /**
      * Generate performance insights from summary data
      */
-    generatePerformanceInsights(summary, testResults) {
-        const insights = [];
+    generatePerformanceInsights(summary: TestSummary, testResults: TestResults): string[] {
+        const insights: string[] = [];
 
         // Compare basic vs computation optimal configurations
         if (testResults.basicFunctions && testResults.computationFunctions) {
@@ -29,12 +40,12 @@ class PerformanceInsightsAnalyzer {
 
         // Add cost-performance trade-off insights for basic functions
         if (summary.costEfficiencyAnalysis.basic) {
-            this._addFunctionInsights(insights, summary.costEfficiencyAnalysis.basic, 'basic');
+            this.addFunctionInsights(insights, summary.costEfficiencyAnalysis.basic, 'basic');
         }
 
         // Add cost-performance trade-off insights for computation functions
         if (summary.costEfficiencyAnalysis.computation) {
-            this._addFunctionInsights(insights, summary.costEfficiencyAnalysis.computation, 'computation');
+            this.addFunctionInsights(insights, summary.costEfficiencyAnalysis.computation, 'computation');
         }
 
         return insights;
@@ -43,7 +54,7 @@ class PerformanceInsightsAnalyzer {
     /**
      * Add function-specific insights (private method)
      */
-    _addFunctionInsights(insights, costAnalysis, functionType) {
+    private addFunctionInsights(insights: string[], costAnalysis: CostAnalyzerOutput, functionType: string): void {
         const baseline = costAnalysis.allConfigurations[0]; // 128MB
         const fastest = costAnalysis.allConfigurations.reduce((fastest, current) => 
             current.avgExecutionTime < fastest.avgExecutionTime ? current : fastest);
@@ -68,8 +79,8 @@ class PerformanceInsightsAnalyzer {
     /**
      * Generate scenario-based optimization recommendations
      */
-    generateScenarioOptimizations(costEfficiencyAnalysis) {
-        const scenarios = {};
+    generateScenarioOptimizations(costEfficiencyAnalysis: CostEfficiencyAnalysis): ScenarioData {
+        const scenarios: ScenarioData = {};
         
         if (costEfficiencyAnalysis.basic) {
             const basicCost = costEfficiencyAnalysis.basic;
@@ -97,13 +108,13 @@ class PerformanceInsightsAnalyzer {
     /**
      * Analyze data quality and collection completeness
      */
-    analyzeDataQuality(testResults) {
-        const dataQuality = {};
+    analyzeDataQuality(testResults: TestResults): DataQualityData {
+        const dataQuality: DataQualityData = {};
         
         if (testResults.basicFunctions) {
             dataQuality.basic = {
                 totalConfigurations: testResults.basicFunctions.length,
-                configurations: testResults.basicFunctions.map(result => ({
+                configurations: testResults.basicFunctions.map((result) => ({
                     memoryMB: result.memoryMB,
                     coldCount: result.coldStart ? result.coldStart.count : 0,
                     warmCount: result.warmStart ? result.warmStart.count : 0
@@ -114,7 +125,7 @@ class PerformanceInsightsAnalyzer {
         if (testResults.computationFunctions) {
             dataQuality.computation = {
                 totalConfigurations: testResults.computationFunctions.length,
-                configurations: testResults.computationFunctions.map(result => ({
+                configurations: testResults.computationFunctions.map((result) => ({
                     memoryMB: result.memoryMB,
                     coldCount: result.coldStart ? result.coldStart.count : 0,
                     warmCount: result.warmStart ? result.warmStart.count : 0
@@ -126,4 +137,4 @@ class PerformanceInsightsAnalyzer {
     }
 }
 
-module.exports = PerformanceInsightsAnalyzer;
+export default PerformanceInsightsAnalyzer;
