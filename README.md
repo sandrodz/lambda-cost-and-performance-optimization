@@ -16,6 +16,7 @@ lambda-cost-and-performance-optimization/
 ├── template.yaml                 # SAM template for Lambda deployments
 ├── samconfig.toml               # SAM configuration
 ├── package.json                 # Project dependencies and scripts
+├── tsconfig.json               # TypeScript configuration
 ├── src/
 │   └── test-functions/          # Lambda function implementations
 │       ├── basic-function/      # ✅ Simple test function
@@ -24,7 +25,19 @@ lambda-cost-and-performance-optimization/
 │   ├── deploy.sh               # ✅ Deployment automation
 │   ├── test-basic-functions.js # ✅ Basic function performance tests
 │   ├── test-computation-functions.js # ✅ Computation function tests
-│   └── test-runner.js          # ✅ Comprehensive test orchestration & cost analysis
+│   ├── test-runner.ts          # ✅ Comprehensive test orchestration (TypeScript)
+│   ├── types/                  # ✅ TypeScript type definitions
+│   │   ├── index.ts           # Core types and interfaces
+│   │   ├── analysis.ts        # Analysis-specific types
+│   │   ├── reporting.ts       # Reporting types
+│   │   └── test-runner.ts     # Test runner types
+│   ├── analysis/               # ✅ Analysis modules (TypeScript)
+│   │   ├── cost-analyzer.ts   # Cost efficiency calculations
+│   │   ├── performance-insights-analyzer.ts # Performance insights
+│   │   └── analysis-coordinator.ts # Orchestrates all analysis
+│   └── reporting/              # ✅ Reporting modules (TypeScript)
+│       ├── report-generator.ts # Report data generation
+│       └── console-report-renderer.ts # Console output formatting
 └── results/                    # Test execution results (generated)
 ```
 
@@ -35,6 +48,8 @@ lambda-cost-and-performance-optimization/
 **Testing:** Comprehensive performance testing with cold/warm start detection, statistical analysis, and cost modeling with blended scenarios
 
 **Analysis:** Enhanced cost analysis with scenario-based recommendations for different workload patterns
+
+**Codebase:** Core analysis and reporting modules migrated to TypeScript with full type safety and comprehensive type definitions
 
 ## Next Phase: Bundling Optimization
 
