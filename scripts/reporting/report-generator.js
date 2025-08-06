@@ -14,19 +14,12 @@ class ReportGenerator {
     /**
      * Generate comprehensive report and display to console
      */
-    generateComprehensiveReport(testResults) {
+    generateComprehensiveReportAndRender(testResults) {
         console.log('\n📊 Comprehensive Performance Report');
         console.log('=' .repeat(80));
         
         // Generate all analysis data objects using the analysis coordinator
-        const reportData = {
-            overview: this.analysisCoordinator.generateOverviewData(testResults),
-            recommendations: this.analysisCoordinator.generateRecommendationsData(testResults),
-            analysis: this.analysisCoordinator.generateAnalysisData(testResults),
-            insights: testResults.summary.performanceInsights || [],
-            scenarios: this.analysisCoordinator.generateScenarioData(testResults.summary.costEfficiencyAnalysis),
-            dataQuality: this.analysisCoordinator.generateDataQualityData(testResults)
-        };
+        const reportData = this.getReportData(testResults);
         
         // Render the visual output to console
         this.consoleRenderer.renderReport(reportData);
@@ -38,14 +31,7 @@ class ReportGenerator {
      * Generate report content as text (for file saving)
      */
     generateReportText(testResults) {
-        const reportData = {
-            overview: this.analysisCoordinator.generateOverviewData(testResults),
-            recommendations: this.analysisCoordinator.generateRecommendationsData(testResults),
-            analysis: this.analysisCoordinator.generateAnalysisData(testResults),
-            insights: testResults.summary.performanceInsights || [],
-            scenarios: this.analysisCoordinator.generateScenarioData(testResults.summary.costEfficiencyAnalysis),
-            dataQuality: this.analysisCoordinator.generateDataQualityData(testResults)
-        };
+        const reportData = this.getReportData(testResults);
         
         let reportContent = '';
         const originalLog = console.log;
