@@ -132,7 +132,7 @@ async function main() {
         const results = await testRunner.runComprehensiveTests();
 
         // Generate and display comprehensive report
-        testRunner.reportGenerator.generateComprehensiveReport(this.testResults);
+        testRunner.reportGenerator.generateComprehensiveReport(results);
         
         // Save all results
         const savedFiles = testRunner.saveResults();
