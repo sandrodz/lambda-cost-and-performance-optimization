@@ -11,10 +11,14 @@ import AnalysisCoordinator from './analysis/analysis-coordinator';
 // Import reporting modules
 import ReportGenerator from './reporting/report-generator';
 
+// Import test functions
+import { runFunctionTests } from './lambda-test-executor.js';
+
 // Import types
 import { 
     TestResults, 
     TestConfig, 
+    LambdaTestConfig,
     SaveResultsResponse
 } from './types';
 
@@ -30,6 +34,31 @@ class PerformanceTestRunner {
     private config: TestConfig;
     private analysisCoordinator: AnalysisCoordinator;
     private reportGenerator: ReportGenerator;
+
+    // Test configurations
+    private readonly BASIC_CONFIG: LambdaTestConfig = {
+        apiBaseUrl: 'https://wlk17iusoe.execute-api.us-east-1.amazonaws.com/Prod',
+        configs: [128, 256, 512, 1024, 2048, 3008],
+        targetColdStarts: 5,
+        targetWarmStarts: 5,
+        maxConcurrentRequests: 20,
+        requestDelay: 500,
+        functionType: 'basic',
+        maxRequests: 100,
+        warmupDelay: 1000
+    };
+
+    private readonly COMPUTATION_CONFIG: LambdaTestConfig = {
+        apiBaseUrl: 'https://wlk17iusoe.execute-api.us-east-1.amazonaws.com/Prod',
+        configs: [128, 512, 1024, 3008],
+        targetColdStarts: 5,
+        targetWarmStarts: 5,
+        maxConcurrentRequests: 20,
+        requestDelay: 500,
+        functionType: 'computation',
+        maxRequests: 50,  // Lower limit for heavy computation
+        warmupDelay: 2000  // Longer warmup delay for computation functions
+    };
 
     constructor(options: PerformanceTestRunnerOptions = {}) {
         this.testResults = {
@@ -82,8 +111,7 @@ class PerformanceTestRunner {
         try {
             // Run basic function tests
             console.log('\n🎯 Executing Basic Function Tests...');
-            const basicTestModule = require('./test-basic-functions.js');
-            this.testResults.basicFunctions = await basicTestModule.runAllTests();
+            this.testResults.basicFunctions = await runFunctionTests(this.BASIC_CONFIG);
             
             // Add delay between test suites
             console.log('\n⏱️  Waiting 30 seconds before computation tests...');
@@ -91,8 +119,7 @@ class PerformanceTestRunner {
             
             // Run computation function tests
             console.log('\n🧮 Executing Heavy Computation Tests...');
-            const computationTestModule = require('./test-computation-functions.js');
-            this.testResults.computationFunctions = await computationTestModule.runAllTests();
+            this.testResults.computationFunctions = await runFunctionTests(this.COMPUTATION_CONFIG);
             
             // Generate comprehensive analysis
             this.testResults.summary = this.analysisCoordinator.generateSummaryAnalysis(this.testResults);

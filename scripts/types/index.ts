@@ -6,6 +6,7 @@
 export * from './analysis';
 export * from './reporting';
 export * from './test-runner';
+export * from './executor';
 
 export interface TestExecutionResult {
   average: number;

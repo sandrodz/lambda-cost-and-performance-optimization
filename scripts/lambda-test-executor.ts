@@ -1,28 +1,25 @@
-#!/usr/bin/env node
-
-const https = require('https');
-
-// Configuration
-const API_BASE_URL = 'https://wlk17iusoe.execute-api.us-east-1.amazonaws.com/Prod';
-const BASIC_CONFIGS = [128, 256, 512, 1024, 2048, 3008];
-const TARGET_COLD_STARTS = 5; // Number of cold starts to collect
-const TARGET_WARM_STARTS = 5; // Number of warm starts to collect
-const MAX_CONCURRENT_REQUESTS = 20; // Concurrent requests to trigger cold starts
-const REQUEST_DELAY = 500; // Delay between request batches (ms)
+import https from 'https';
+import { 
+    TestExecutionResult, 
+    FunctionTestResult, 
+    LambdaTestConfig, 
+    LambdaFunctionResponse, 
+    TestRequestResult 
+} from './types/index.js';
 
 /**
  * Make HTTP GET request
  */
-function makeRequest(url) {
+function makeRequest(url: string): Promise<LambdaFunctionResponse> {
     return new Promise((resolve, reject) => {
         const req = https.get(url, (res) => {
             let data = '';
             res.on('data', chunk => data += chunk);
             res.on('end', () => {
                 try {
-                    resolve(JSON.parse(data));
+                    resolve(JSON.parse(data) as LambdaFunctionResponse);
                 } catch (err) {
-                    reject(new Error(`Failed to parse response: ${err.message}`));
+                    reject(new Error(`Failed to parse response: ${(err as Error).message}`));
                 }
             });
         });
@@ -38,7 +35,7 @@ function makeRequest(url) {
 /**
  * Make concurrent requests to trigger cold starts
  */
-async function makeConcurrentRequests(url, count) {
+async function makeConcurrentRequests(url: string, count: number): Promise<LambdaFunctionResponse[]> {
     const requests = Array(count).fill(null).map(() => makeRequest(url));
     try {
         return await Promise.all(requests);
@@ -46,50 +43,52 @@ async function makeConcurrentRequests(url, count) {
         // If some requests fail, return successful ones
         const results = await Promise.allSettled(requests);
         return results
-            .filter(result => result.status === 'fulfilled')
+            .filter((result): result is PromiseFulfilledResult<LambdaFunctionResponse> => result.status === 'fulfilled')
             .map(result => result.value);
     }
 }
 
 /**
- * Test a single memory configuration with targeted cold/warm start collection
+ * Generic test function that can test any Lambda function type
  */
-async function testBasicFunction(memoryMB) {
-    const url = `${API_BASE_URL}/basic-${memoryMB}`;
-    const coldStartResults = [];
-    const warmStartResults = [];
+export async function testLambdaFunction(memoryMB: number, config: LambdaTestConfig): Promise<FunctionTestResult> {
+    const url = `${config.apiBaseUrl}/${config.functionType}-${memoryMB}`;
+    const coldStartResults: TestRequestResult[] = [];
+    const warmStartResults: TestRequestResult[] = [];
     let totalRequests = 0;
     let requestNumber = 1;
     
-    console.log(`\nTesting Basic Function ${memoryMB}MB:`);
-    console.log(`Target: ${TARGET_COLD_STARTS} cold starts, ${TARGET_WARM_STARTS} warm starts`);
+    console.log(`\nTesting ${config.functionType.charAt(0).toUpperCase() + config.functionType.slice(1)} Function ${memoryMB}MB:`);
+    console.log(`Target: ${config.targetColdStarts} cold starts, ${config.targetWarmStarts} warm starts`);
     console.log('─'.repeat(60));
     
-    while (coldStartResults.length < TARGET_COLD_STARTS || warmStartResults.length < TARGET_WARM_STARTS) {
+    while (coldStartResults.length < config.targetColdStarts || warmStartResults.length < config.targetWarmStarts) {
         try {
-            console.log(`  Request batch ${Math.ceil(requestNumber / MAX_CONCURRENT_REQUESTS)} (Cold: ${coldStartResults.length}/${TARGET_COLD_STARTS}, Warm: ${warmStartResults.length}/${TARGET_WARM_STARTS})`);
+            console.log(`  Request batch ${Math.ceil(requestNumber / config.maxConcurrentRequests)} (Cold: ${coldStartResults.length}/${config.targetColdStarts}, Warm: ${warmStartResults.length}/${config.targetWarmStarts})`);
             
             // Make concurrent requests to trigger cold starts
-            const responses = await makeConcurrentRequests(url, MAX_CONCURRENT_REQUESTS);
+            const responses = await makeConcurrentRequests(url, config.maxConcurrentRequests);
             totalRequests += responses.length;
             
             // Process responses
             responses.forEach((response, index) => {
                 if (response.performance && response.executionEnvironment) {
                     const isColdStart = response.executionEnvironment.coldStart || false;
-                    const result = {
+                    const memoryLimit = response.executionEnvironment.memoryLimit;
+                    
+                    const result: TestRequestResult = {
                         requestNumber: requestNumber + index,
                         executionTime: response.performance.totalExecutionTime,
-                        memoryLimit: response.executionEnvironment.memoryLimit,
+                        memoryLimit: memoryLimit,
                         requestId: response.executionEnvironment.requestId,
                         isColdStart: isColdStart,
                         timestamp: new Date().toISOString()
                     };
                     
-                    if (isColdStart && coldStartResults.length < TARGET_COLD_STARTS) {
+                    if (isColdStart && coldStartResults.length < config.targetColdStarts) {
                         coldStartResults.push(result);
                         console.log(`    Cold Start: ${response.performance.totalExecutionTime}ms`);
-                    } else if (!isColdStart && warmStartResults.length < TARGET_WARM_STARTS) {
+                    } else if (!isColdStart && warmStartResults.length < config.targetWarmStarts) {
                         warmStartResults.push(result);
                         console.log(`    Warm Start: ${response.performance.totalExecutionTime}ms`);
                     } else {
@@ -102,29 +101,29 @@ async function testBasicFunction(memoryMB) {
                 }
             });
             
-            requestNumber += MAX_CONCURRENT_REQUESTS;
+            requestNumber += config.maxConcurrentRequests;
             
             // Check if we have enough of both types
-            if (coldStartResults.length >= TARGET_COLD_STARTS && warmStartResults.length >= TARGET_WARM_STARTS) {
+            if (coldStartResults.length >= config.targetColdStarts && warmStartResults.length >= config.targetWarmStarts) {
                 console.log(`    ✅ Collection complete! Have enough cold and warm starts.`);
                 break;
             }
             
             // Wait between batches to allow containers to scale down for more cold starts
-            if (coldStartResults.length < TARGET_COLD_STARTS) {
-                console.log(`    Waiting ${REQUEST_DELAY}ms for potential container scaling...`);
-                await new Promise(resolve => setTimeout(resolve, REQUEST_DELAY));
+            if (coldStartResults.length < config.targetColdStarts) {
+                console.log(`    Waiting ${config.requestDelay}ms for potential container scaling...`);
+                await new Promise(resolve => setTimeout(resolve, config.requestDelay));
             }
             
             // Safety break to prevent infinite loops
-            if (totalRequests > 100) {
+            if (totalRequests > config.maxRequests) {
                 console.log(`    Reached maximum request limit (${totalRequests}), stopping...`);
                 break;
             }
             
         } catch (error) {
-            console.log(`    Batch error: ${error.message}`);
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            console.log(`    Batch error: ${(error as Error).message}`);
+            await new Promise(resolve => setTimeout(resolve, config.warmupDelay));
         }
     }
     
@@ -134,8 +133,8 @@ async function testBasicFunction(memoryMB) {
     if (allResults.length > 0) {
         console.log(`\n  Collection Summary:`);
         console.log(`    Total Requests: ${totalRequests}`);
-        console.log(`    Cold Starts Collected: ${coldStartResults.length}/${TARGET_COLD_STARTS}`);
-        console.log(`    Warm Starts Collected: ${warmStartResults.length}/${TARGET_WARM_STARTS}`);
+        console.log(`    Cold Starts Collected: ${coldStartResults.length}/${config.targetColdStarts}`);
+        console.log(`    Warm Starts Collected: ${warmStartResults.length}/${config.targetWarmStarts}`);
         
         // Cold start statistics
         if (coldStartResults.length > 0) {
@@ -154,54 +153,50 @@ async function testBasicFunction(memoryMB) {
             const warmMax = Math.max(...warmTimes);
             console.log(`    Warm Start  - Avg: ${warmAvg.toFixed(2)}ms, Min: ${warmMin}ms, Max: ${warmMax}ms`);
         }
-        
-        return {
-            memoryMB,
-            totalRequests,
-            coldStart: coldStartResults.length > 0 ? {
-                count: coldStartResults.length,
-                totalTime: coldStartResults.reduce((sum, r) => sum + r.executionTime, 0),
-                average: coldStartResults.reduce((sum, r) => sum + r.executionTime, 0) / coldStartResults.length,
-                min: Math.min(...coldStartResults.map(r => r.executionTime)),
-                max: Math.max(...coldStartResults.map(r => r.executionTime)),
-                results: coldStartResults
-            } : null,
-            warmStart: warmStartResults.length > 0 ? {
-                count: warmStartResults.length,
-                totalTime: warmStartResults.reduce((sum, r) => sum + r.executionTime, 0),
-                average: warmStartResults.reduce((sum, r) => sum + r.executionTime, 0) / warmStartResults.length,
-                min: Math.min(...warmStartResults.map(r => r.executionTime)),
-                max: Math.max(...warmStartResults.map(r => r.executionTime)),
-                results: warmStartResults
-            } : null,
-            allResults
-        };
     }
+
+    // Return standardized FunctionTestResult format
+    const coldStats: TestExecutionResult | null = coldStartResults.length > 0 ? {
+        count: coldStartResults.length,
+        average: coldStartResults.reduce((sum, r) => sum + r.executionTime, 0) / coldStartResults.length,
+        min: Math.min(...coldStartResults.map(r => r.executionTime)),
+        max: Math.max(...coldStartResults.map(r => r.executionTime))
+    } : null;
+
+    const warmStats: TestExecutionResult | null = warmStartResults.length > 0 ? {
+        count: warmStartResults.length,
+        average: warmStartResults.reduce((sum, r) => sum + r.executionTime, 0) / warmStartResults.length,
+        min: Math.min(...warmStartResults.map(r => r.executionTime)),
+        max: Math.max(...warmStartResults.map(r => r.executionTime))
+    } : null;
     
-    return null;
+    return {
+        memoryMB,
+        coldStart: coldStats,
+        warmStart: warmStats
+    };
 }
 
 /**
- * Run all basic function tests
+ * Generic test runner for any function type
  */
-async function runAllTests() {
-    console.log('🚀 Starting Basic Function Performance Tests');
+export async function runFunctionTests(config: LambdaTestConfig): Promise<FunctionTestResult[]> {
+    const functionName = config.functionType.charAt(0).toUpperCase() + config.functionType.slice(1);
+    console.log(`🚀 Starting ${functionName} Function Performance Tests`);
     console.log('═'.repeat(60));
     
-    const allResults = [];
+    const allResults: FunctionTestResult[] = [];
     
-    for (const memoryMB of BASIC_CONFIGS) {
-        const result = await testBasicFunction(memoryMB);
-        if (result) {
-            allResults.push(result);
-        }
+    for (const memoryMB of config.configs) {
+        const result = await testLambdaFunction(memoryMB, config);
+        allResults.push(result);
     }
     
     // Display summary
-    console.log('\n📊 Performance Summary:');
-    console.log('═'.repeat(90));
+    console.log(`\n📊 ${functionName} Performance Summary:`);
+    console.log('═'.repeat(80));
     console.log('Memory (MB) | Cold Starts | Warm Starts | Cold Avg (ms) | Warm Avg (ms)');
-    console.log('─'.repeat(90));
+    console.log('─'.repeat(80));
     
     allResults.forEach(result => {
         const coldCount = result.coldStart ? result.coldStart.count : 0;
@@ -230,15 +225,8 @@ async function runAllTests() {
         }
     });
     
-    console.log('\n✅ Basic function tests completed!');
+    console.log(`\n✅ ${functionName} function tests completed!`);
     console.log('💡 Check X-Ray traces in AWS Console for detailed analysis');
     
     return allResults;
 }
-
-// Run tests if called directly
-if (require.main === module) {
-    runAllTests().catch(console.error);
-}
-
-module.exports = { runAllTests, testBasicFunction };
