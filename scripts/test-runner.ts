@@ -12,7 +12,7 @@ import AnalysisCoordinator from './analysis/analysis-coordinator';
 import ReportGenerator from './reporting/report-generator';
 
 // Import test functions
-import { runFunctionTests } from './lambda-test-executor.js';
+import { LambdaTestExecutor } from './lambda-test-executor.js';
 
 // Import types
 import { 
@@ -34,6 +34,7 @@ class PerformanceTestRunner {
     private config: TestConfig;
     private analysisCoordinator: AnalysisCoordinator;
     private reportGenerator: ReportGenerator;
+    private executor: LambdaTestExecutor;
 
     // Test configurations
     private readonly BASIC_CONFIG: LambdaTestConfig = {
@@ -93,6 +94,9 @@ class PerformanceTestRunner {
         
         // Initialize report generator
         this.reportGenerator = new ReportGenerator(this.config, this.analysisCoordinator);
+        
+        // Initialize Lambda test executor
+        this.executor = new LambdaTestExecutor();
     }
 
     init(): void {
@@ -111,7 +115,7 @@ class PerformanceTestRunner {
         try {
             // Run basic function tests
             console.log('\n🎯 Executing Basic Function Tests...');
-            this.testResults.basicFunctions = await runFunctionTests(this.BASIC_CONFIG);
+            this.testResults.basicFunctions = await this.executor.runTests(this.BASIC_CONFIG);
             
             // Add delay between test suites
             console.log('\n⏱️  Waiting 30 seconds before computation tests...');
@@ -119,7 +123,7 @@ class PerformanceTestRunner {
             
             // Run computation function tests
             console.log('\n🧮 Executing Heavy Computation Tests...');
-            this.testResults.computationFunctions = await runFunctionTests(this.COMPUTATION_CONFIG);
+            this.testResults.computationFunctions = await this.executor.runTests(this.COMPUTATION_CONFIG);
             
             // Generate comprehensive analysis
             this.testResults.summary = this.analysisCoordinator.generateSummaryAnalysis(this.testResults);
