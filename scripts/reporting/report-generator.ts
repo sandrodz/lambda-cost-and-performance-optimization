@@ -3,9 +3,11 @@
  * Coordinates report data generation and rendering across multiple output formats
  */
 
-import { TestConfig, TestResults, ReportData } from '../types';
 import AnalysisCoordinator from '../analysis/analysis-coordinator';
 import ConsoleReportRenderer from './console-report-renderer';
+
+import { TestConfig, TestResults } from '../types/test-runner';
+import { ReportData } from '../types/reporting';
 
 class ReportGenerator {
     private analysisCoordinator: AnalysisCoordinator;

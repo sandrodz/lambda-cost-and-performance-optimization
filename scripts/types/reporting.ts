@@ -4,10 +4,136 @@
 
 import {
   TestResults,
-  TestConfig,
-  ReportData,
-  SaveResultsResponse
-} from './index';
+  TestConfig
+} from './test-runner';
+
+import {
+  OptimalMemoryConfig,
+  CostAnalysisConfig
+} from './analysis';
+
+// === REPORT DATA TYPES ===
+
+/**
+ * Complete report data structure
+ */
+export interface ReportData {
+  overview: OverviewData;
+  recommendations: RecommendationsData;
+  analysis: AnalysisData;
+  insights: string[];
+  scenarios: ScenarioData;
+  dataQuality: DataQualityData;
+}
+
+/**
+ * Report overview section data
+ */
+export interface OverviewData {
+  timestamp: string;
+  totalFunctionsTested: number;
+  testTypes: {
+    basic: number;
+    computation: number;
+  };
+}
+
+/**
+ * Report recommendations section data
+ */
+export interface RecommendationsData {
+  basic?: OptimalMemoryConfig;
+  computation?: OptimalMemoryConfig;
+}
+
+/**
+ * Report analysis section data
+ */
+export interface AnalysisData {
+  basic?: FunctionAnalysisData;
+  computation?: FunctionAnalysisData;
+}
+
+/**
+ * Function analysis data for visualization
+ */
+export interface FunctionAnalysisData {
+  warmStart: PerformanceDataPoint[];
+  coldStart: PerformanceDataPoint[];
+  blended: BlendedDataPoint[];
+  hasAnyColdStart: boolean;
+}
+
+/**
+ * Performance data point for visualization
+ */
+export interface PerformanceDataPoint {
+  memoryMB: number;
+  executionTime: number;
+  cost: number;
+  performanceGain: number;
+  costChange: number;
+}
+
+/**
+ * Blended cost scenario data point
+ */
+export interface BlendedDataPoint {
+  memoryMB: number;
+  scenarios: { [coldPercentage: number]: number };
+  useCase: string;
+}
+
+/**
+ * Scenario optimization data
+ */
+export interface ScenarioData {
+  basic?: ScenarioOptimizations;
+  computation?: ScenarioOptimizations;
+}
+
+/**
+ * Optimization scenarios for different use cases
+ */
+export interface ScenarioOptimizations {
+  warmOptimal: CostAnalysisConfig;
+  perfOptimal: CostAnalysisConfig;
+}
+
+/**
+ * Data quality metrics
+ */
+export interface DataQualityData {
+  basic?: FunctionDataQuality;
+  computation?: FunctionDataQuality;
+}
+
+/**
+ * Function-specific data quality metrics
+ */
+export interface FunctionDataQuality {
+  totalConfigurations: number;
+  configurations: ConfigurationQuality[];
+}
+
+/**
+ * Configuration-specific quality metrics
+ */
+export interface ConfigurationQuality {
+  memoryMB: number;
+  coldCount: number;
+  warmCount: number;
+}
+
+/**
+ * File save operation response
+ */
+export interface SaveResultsResponse {
+  dataFile: string;
+  summaryFile: string | null;
+}
+
+// === REPORT GENERATION TYPES ===
 
 export interface ReportGeneratorInput {
   testResults: TestResults;

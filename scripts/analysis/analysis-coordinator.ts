@@ -8,9 +8,13 @@ import PerformanceInsightsAnalyzer from './performance-insights-analyzer';
 import {
     TestConfig,
     TestResults,
-    TestSummary,
+    TestSummary
+} from '../types/test-runner';
+import {
     CostAnalyzerOutput,
-    CostEfficiencyAnalysis,
+    CostEfficiencyAnalysis
+} from '../types/analysis';
+import {
     FunctionAnalysisData,
     PerformanceDataPoint,
     BlendedDataPoint,
@@ -19,7 +23,7 @@ import {
     AnalysisData,
     ScenarioData,
     DataQualityData
-} from '../types';
+} from '../types/reporting';
 
 class AnalysisCoordinator {
     private config: TestConfig;

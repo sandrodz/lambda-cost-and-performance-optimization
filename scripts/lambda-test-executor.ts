@@ -4,13 +4,8 @@
  */
 
 import https from 'https';
-import { 
-    TestExecutionResult, 
-    FunctionTestResult, 
-    LambdaTestConfig, 
-    LambdaFunctionResponse, 
-    TestRequestResult 
-} from './types/index.js';
+import { TestExecutionResult, FunctionTestResult} from './types/test-runner.js';
+import { LambdaTestConfig, LambdaFunctionResponse, TestRequestResult } from './types/executor.js';
 
 export class LambdaTestExecutor {
 
@@ -62,8 +57,9 @@ export class LambdaTestExecutor {
         const url = `${config.apiBaseUrl}/${config.functionType}-${memoryMB}`;
         const coldStartResults: TestRequestResult[] = [];
         const warmStartResults: TestRequestResult[] = [];
-        let totalRequests = 0;
-        let requestNumber = 1;
+        let totalRequestsAttempted = 0;
+        let batchNumber = 1;
+        let globalRequestCounter = 1; // Simple counter for individual request numbering
         
         console.log(`\nTesting ${config.functionType.charAt(0).toUpperCase() + config.functionType.slice(1)} Function ${memoryMB}MB:`);
         console.log(`Target: ${config.targetColdStarts} cold starts, ${config.targetWarmStarts} warm starts`);
@@ -71,24 +67,23 @@ export class LambdaTestExecutor {
         
         while (coldStartResults.length < config.targetColdStarts || warmStartResults.length < config.targetWarmStarts) {
             try {
-                console.log(`  Request batch ${Math.ceil(requestNumber / config.maxConcurrentRequests)} (Cold: ${coldStartResults.length}/${config.targetColdStarts}, Warm: ${warmStartResults.length}/${config.targetWarmStarts})`);
+                console.log(`  Request batch ${batchNumber} (Cold: ${coldStartResults.length}/${config.targetColdStarts}, Warm: ${warmStartResults.length}/${config.targetWarmStarts})`);
                 
                 // Make concurrent requests to trigger cold starts
                 const responses = await this.makeConcurrentRequests(url, config.maxConcurrentRequests);
-                totalRequests += responses.length;
+                totalRequestsAttempted += config.maxConcurrentRequests; // Track attempts, not just successes
                 
                 // Process responses
-                responses.forEach((response, index) => {
+                responses.forEach((response) => {
                     if (response.performance && response.executionEnvironment) {
                         const isColdStart = response.executionEnvironment.coldStart || false;
-                        const memoryLimit = response.executionEnvironment.memoryLimit;
                         
                         const result: TestRequestResult = {
-                            requestNumber: requestNumber + index,
-                            executionTime: response.performance.totalExecutionTime,
-                            memoryLimit: memoryLimit,
+                            requestNumber: globalRequestCounter++, // Simple incremental counter
+                            duration: response.performance.totalExecutionTime,
+                            memoryMB: response.executionEnvironment.memoryLimit,
                             requestId: response.executionEnvironment.requestId,
-                            isColdStart: isColdStart,
+                            isColdStart: response.executionEnvironment.coldStart,
                             timestamp: new Date().toISOString()
                         };
                         
@@ -108,7 +103,7 @@ export class LambdaTestExecutor {
                     }
                 });
                 
-                requestNumber += config.maxConcurrentRequests;
+                batchNumber++; // Increment batch counter
                 
                 // Check if we have enough of both types
                 if (coldStartResults.length >= config.targetColdStarts && warmStartResults.length >= config.targetWarmStarts) {
@@ -123,8 +118,8 @@ export class LambdaTestExecutor {
                 }
                 
                 // Safety break to prevent infinite loops
-                if (totalRequests > config.maxRequests) {
-                    console.log(`    Reached maximum request limit (${totalRequests}), stopping...`);
+                if (totalRequestsAttempted > config.maxRequests) {
+                    console.log(`    Reached maximum request limit (${totalRequestsAttempted}), stopping...`);
                     break;
                 }
                 
@@ -139,13 +134,14 @@ export class LambdaTestExecutor {
         
         if (allResults.length > 0) {
             console.log(`\n  Collection Summary:`);
-            console.log(`    Total Requests: ${totalRequests}`);
+            console.log(`    Total Requests Attempted: ${totalRequestsAttempted}`);
+            console.log(`    Successful Responses: ${allResults.length}`);
             console.log(`    Cold Starts Collected: ${coldStartResults.length}/${config.targetColdStarts}`);
             console.log(`    Warm Starts Collected: ${warmStartResults.length}/${config.targetWarmStarts}`);
             
             // Cold start statistics
             if (coldStartResults.length > 0) {
-                const coldTimes = coldStartResults.map(r => r.executionTime);
+                const coldTimes = coldStartResults.map(r => r.duration);
                 const coldAvg = coldTimes.reduce((a, b) => a + b, 0) / coldTimes.length;
                 const coldMin = Math.min(...coldTimes);
                 const coldMax = Math.max(...coldTimes);
@@ -154,7 +150,7 @@ export class LambdaTestExecutor {
             
             // Warm start statistics
             if (warmStartResults.length > 0) {
-                const warmTimes = warmStartResults.map(r => r.executionTime);
+                const warmTimes = warmStartResults.map(r => r.duration);
                 const warmAvg = warmTimes.reduce((a, b) => a + b, 0) / warmTimes.length;
                 const warmMin = Math.min(...warmTimes);
                 const warmMax = Math.max(...warmTimes);
@@ -165,16 +161,16 @@ export class LambdaTestExecutor {
         // Return standardized FunctionTestResult format
         const coldStats: TestExecutionResult | null = coldStartResults.length > 0 ? {
             count: coldStartResults.length,
-            average: coldStartResults.reduce((sum, r) => sum + r.executionTime, 0) / coldStartResults.length,
-            min: Math.min(...coldStartResults.map(r => r.executionTime)),
-            max: Math.max(...coldStartResults.map(r => r.executionTime))
+            average: coldStartResults.reduce((sum, r) => sum + r.duration, 0) / coldStartResults.length,
+            min: Math.min(...coldStartResults.map(r => r.duration)),
+            max: Math.max(...coldStartResults.map(r => r.duration))
         } : null;
 
         const warmStats: TestExecutionResult | null = warmStartResults.length > 0 ? {
             count: warmStartResults.length,
-            average: warmStartResults.reduce((sum, r) => sum + r.executionTime, 0) / warmStartResults.length,
-            min: Math.min(...warmStartResults.map(r => r.executionTime)),
-            max: Math.max(...warmStartResults.map(r => r.executionTime))
+            average: warmStartResults.reduce((sum, r) => sum + r.duration, 0) / warmStartResults.length,
+            min: Math.min(...warmStartResults.map(r => r.duration)),
+            max: Math.max(...warmStartResults.map(r => r.duration))
         } : null;
         
         return {

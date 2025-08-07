@@ -3,8 +3,8 @@
  * Handles all console output formatting for performance reports
  */
 
+import { TestConfig } from '../types/test-runner';
 import {
-    TestConfig,
     ReportData,
     OverviewData,
     RecommendationsData,
@@ -12,7 +12,7 @@ import {
     FunctionAnalysisData,
     ScenarioData,
     DataQualityData
-} from '../types';
+} from '../types/reporting';
 
 class ConsoleReportRenderer {
     constructor(_config: TestConfig) {

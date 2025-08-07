@@ -2,14 +2,63 @@
  * Analysis-specific interfaces for Lambda performance testing
  */
 
-import {
-  TestResults,
-  FunctionTestResult,
-  TestConfig,
-  CostAnalysisConfig,
-  OptimalMemoryConfig,
-  TestExecutionResult
-} from './index';
+// === OPTIMIZATION AND COST ANALYSIS TYPES ===
+
+/**
+ * Optimal configurations for different function types
+ */
+export interface OptimalMemoryConfigurations {
+  basic?: OptimalMemoryConfig;
+  computation?: OptimalMemoryConfig;
+}
+
+/**
+ * Optimal memory configuration with performance and cost metrics
+ */
+export interface OptimalMemoryConfig {
+  memoryMB: number;
+  warmStartAvg: number;
+  coldStartAvg: number | null;
+  blendedCost: number;
+  recommendation: string;
+}
+
+/**
+ * Cost efficiency analysis for all function types
+ */
+export interface CostEfficiencyAnalysis {
+  basic?: FunctionCostAnalysis;
+  computation?: FunctionCostAnalysis;
+}
+
+/**
+ * Detailed cost analysis for a function type
+ */
+export interface FunctionCostAnalysis {
+  mostCostEfficient: CostAnalysisConfig;
+  leastCostEfficient: CostAnalysisConfig;
+  allConfigurations: CostAnalysisConfig[];
+}
+
+/**
+ * Cost analysis configuration with detailed metrics
+ */
+export interface CostAnalysisConfig {
+  memoryMB: number;
+  avgExecutionTime: number;
+  coldStartTime: number | null;
+  costPer1MInvocations: number;
+  coldStartCostPer1M: number;
+  blendedCostPer1M: number;
+  costEfficiencyScore: number;
+}
+
+// === ANALYSIS PIPELINE TYPES ===
+
+// Forward type references (actual types defined in test-runner.ts)
+type TestResults = import('./test-runner').TestResults;
+type TestConfig = import('./test-runner').TestConfig;
+type FunctionTestResult = import('./test-runner').FunctionTestResult;
 
 export interface AnalysisInput {
   testResults: TestResults;
@@ -37,11 +86,6 @@ export interface PerformanceInsightsOutput {
   optimalConfigurations: OptimalMemoryConfigurations;
 }
 
-export interface OptimalMemoryConfigurations {
-  basic?: OptimalMemoryConfig;
-  computation?: OptimalMemoryConfig;
-}
-
 export interface CostCalculationInput {
   memoryMB: number;
   executionTime: number;
@@ -56,13 +100,6 @@ export interface CostCalculationOutput {
   coldStartCostPer1M: number;
   blendedCostPer1M: number;
   costEfficiencyScore: number;
-}
-
-export interface PerformanceMetric {
-  memoryMB: number;
-  warmStart: TestExecutionResult | null;
-  coldStart: TestExecutionResult | null;
-  errors?: string[];
 }
 
 export interface OptimizationSuggestion {

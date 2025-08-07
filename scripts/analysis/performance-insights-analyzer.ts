@@ -6,12 +6,16 @@
 import {
     TestConfig,
     TestResults,
-    TestSummary,
+    TestSummary
+} from '../types/test-runner';
+import {
     CostEfficiencyAnalysis,
-    CostAnalyzerOutput,
+    CostAnalyzerOutput
+} from '../types/analysis';
+import {
     ScenarioData,
     DataQualityData
-} from '../types';
+} from '../types/reporting';
 
 class PerformanceInsightsAnalyzer {
     constructor(_config: TestConfig) {

@@ -5,11 +5,13 @@
 
 import {
     TestConfig,
-    FunctionTestResult,
+    FunctionTestResult
+} from '../types/test-runner';
+import {
     CostAnalysisConfig,
     OptimalMemoryConfig,
     CostAnalyzerOutput
-} from '../types';
+} from '../types/analysis';
 
 class CostAnalyzer {
     private config: TestConfig;

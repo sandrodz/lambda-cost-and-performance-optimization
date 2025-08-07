@@ -2,7 +2,63 @@
  * Test runner specific interfaces for Lambda performance testing
  */
 
-import { TestResults, TestConfig, ReportData } from './index';
+// === CORE TEST RESULT TYPES ===
+
+/**
+ * Test execution metrics and statistics
+ */
+export interface TestExecutionResult {
+  average: number;
+  count: number;
+  min?: number;
+  max?: number;
+  standardDeviation?: number;
+}
+
+/**
+ * Test results for a specific memory configuration
+ */
+export interface FunctionTestResult {
+  memoryMB: number;
+  warmStart: TestExecutionResult | null;
+  coldStart: TestExecutionResult | null;
+  errors?: string[];
+}
+
+/**
+ * Complete test suite results
+ */
+export interface TestResults {
+  timestamp: string;
+  basicFunctions: FunctionTestResult[] | null;
+  computationFunctions: FunctionTestResult[] | null;
+  summary: TestSummary;
+}
+
+/**
+ * High-level test summary and recommendations
+ */
+export interface TestSummary {
+  totalFunctionsTested: number;
+  optimalMemoryConfigurations: import('./analysis').OptimalMemoryConfigurations;
+  costEfficiencyAnalysis: import('./analysis').CostEfficiencyAnalysis;
+  performanceInsights: string[];
+}
+
+/**
+ * Test execution configuration
+ */
+export interface TestConfig {
+  lambdaPricePerGbSecond: number;
+  defaultColdStartPercentage: number;
+  costCalculationScale: number;
+  blendedScenarios: number[];
+}
+
+// === TEST RUNNER SPECIFIC TYPES ===
+
+// Import ReportData from reporting module
+import { ReportData } from './reporting';
 
 export interface TestRunnerConfig extends TestConfig {
   saveToFile: boolean;

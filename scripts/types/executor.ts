@@ -20,15 +20,15 @@ export interface LambdaFunctionResponse {
   };
   executionEnvironment: {
     coldStart: boolean;
-    memoryLimit: number;
+    memoryLimit: number; // Keep as memoryLimit since this is the Lambda response format
     requestId: string;
   };
 }
 
 export interface TestRequestResult {
   requestNumber: number;
-  executionTime: number;
-  memoryLimit: number;
+  duration: number; // Standardized from executionTime to match ExecutionResult
+  memoryMB: number; // Standardized from memoryLimit for consistency
   requestId: string;
   isColdStart: boolean;
   timestamp: string;
