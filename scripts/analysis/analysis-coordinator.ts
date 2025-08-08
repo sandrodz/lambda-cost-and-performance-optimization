@@ -84,10 +84,7 @@ class AnalysisCoordinator {
   /**
    * Generate function analysis data for reporting
    */
-  generateFunctionAnalysisData(
-    costAnalysis: CostAnalyzerOutput,
-    _functionType?: string
-  ): FunctionAnalysisData {
+  generateFunctionAnalysisData(costAnalysis: CostAnalyzerOutput): FunctionAnalysisData {
     const warmBaseline = costAnalysis.allConfigurations[0];
 
     const warmStartData: PerformanceDataPoint[] = costAnalysis.allConfigurations.map(config => ({
@@ -216,16 +213,15 @@ class AnalysisCoordinator {
 
     if (testResults.summary.costEfficiencyAnalysis.basic) {
       analysis.basic = this.generateFunctionAnalysisData(
-        testResults.summary.costEfficiencyAnalysis.basic,
-        'basic'
-
+        testResults.summary.costEfficiencyAnalysis.basic
+      );
     }
 
     if (testResults.summary.costEfficiencyAnalysis.computation) {
       analysis.computation = this.generateFunctionAnalysisData(
-        testResults.summary.costEfficiencyAnalysis.computation,
-        'computation'
+        testResults.summary.costEfficiencyAnalysis.computation
       );
+    }
 
     return analysis;
   }
