@@ -2,6 +2,7 @@ import js from '@eslint/js';
 import typescript from '@typescript-eslint/eslint-plugin';
 import typescriptParser from '@typescript-eslint/parser';
 import prettier from 'eslint-plugin-prettier';
+import globals from 'globals';
 
 export default [
   js.configs.recommended,
@@ -12,7 +13,10 @@ export default [
       parserOptions: {
         ecmaVersion: 2022,
         sourceType: 'module',
-        // Remove type-aware linting for now to avoid parsing errors
+        project: ['./tsconfig.json'],
+      },
+      globals: {
+        ...globals.node,
       },
     },
     plugins: {
@@ -23,16 +27,16 @@ export default [
       // Prettier integration
       'prettier/prettier': 'error',
       
-      // Basic TypeScript rules (without type checking)
-      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      // TypeScript specific rules
+      '@typescript-eslint/no-unused-vars': ['error'],
       '@typescript-eslint/explicit-function-return-type': 'off',
       '@typescript-eslint/explicit-module-boundary-types': 'off',
+      '@typescript-eslint/no-explicit-any': 'warn',
       
       // General code quality rules
       'prefer-const': 'error',
       'no-var': 'error',
-      'no-console': 'off', // Allow console.log
-      'no-undef': 'off', // TypeScript handles this
+      'no-console': 'off',
       eqeqeq: ['error', 'always'],
       curly: ['error', 'all'],
       
