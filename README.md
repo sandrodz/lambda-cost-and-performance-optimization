@@ -95,6 +95,23 @@ curl https://wlk17iusoe.execute-api.us-east-1.amazonaws.com/Prod/computation-128
 - `npm run test:performance` - Run comprehensive performance tests (both basic and computation)
 - `npm run logs` - View CloudWatch logs
 
+## Development Guidelines
+
+This project enforces code quality through automated git hooks and conventional commits:
+
+- **Code Quality**: ESLint, Prettier, and TypeScript checks run on every commit
+- **Commit Messages**: Follow [Conventional Commits](https://www.conventionalcommits.org/) format
+- **Dependencies**: Automated unused dependency detection with knip
+
+For detailed guidelines, see [docs/COMMIT_GUIDELINES.md](docs/COMMIT_GUIDELINES.md).
+
+### Quick Start for Contributors
+```bash
+npm install  # Sets up git hooks automatically
+npm run code:check  # Run all quality checks
+npm run code:fix    # Auto-fix issues
+```
+
 ## Key Questions & Status
 
 1. ✅ **What is the optimal memory configuration for different workload types?**
