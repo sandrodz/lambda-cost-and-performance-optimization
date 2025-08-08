@@ -7,7 +7,7 @@ import https from 'https';
 import { TestExecutionResult, FunctionTestResult } from './types/test-runner.js';
 import { LambdaTestConfig, LambdaFunctionResponse, TestRequestResult } from './types/executor.js';
 
-export class LambdaTestExecutor {
+class LambdaTestExecutor {
   /**
    * Make HTTP GET request
    */
@@ -279,3 +279,5 @@ export class LambdaTestExecutor {
     return allResults;
   }
 }
+
+export default LambdaTestExecutor;

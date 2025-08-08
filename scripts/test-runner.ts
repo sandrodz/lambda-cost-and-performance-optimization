@@ -8,7 +8,7 @@ import fs from 'fs';
 // Import modules
 import AnalysisCoordinator from './analysis/analysis-coordinator';
 import ReportGenerator from './reporting/report-generator';
-import { LambdaTestExecutor } from './lambda-test-executor.js';
+import LambdaTestExecutor from './lambda-test-executor.js';
 
 // Import types
 import { TestResults, TestConfig } from './types/test-runner.js';
