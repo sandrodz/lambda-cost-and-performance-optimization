@@ -2,15 +2,8 @@
  * Reporting-specific interfaces for Lambda performance testing
  */
 
-import {
-  TestResults,
-  TestConfig
-} from './test-runner';
-
-import {
-  OptimalMemoryConfig,
-  CostAnalysisConfig
-} from './analysis';
+import { TestResults, TestConfig } from './test-runner';
+import { OptimalMemoryConfig, CostAnalysisConfig } from './analysis';
 
 // === REPORT DATA TYPES ===
 

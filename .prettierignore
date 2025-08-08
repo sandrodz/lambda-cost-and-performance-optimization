@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+src/test-functions/*/node_modules/
+
+# Build outputs
+dist/
+build/
+.aws-sam/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Runtime data
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+
+# Config files
+package-lock.json
+yarn.lock
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+
+# Documentation that should maintain formatting
+README.md
+CHANGELOG.md
