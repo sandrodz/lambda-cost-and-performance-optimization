@@ -86,7 +86,7 @@ class PerformanceTestRunner {
     this.analysisCoordinator = new AnalysisCoordinator(this.config);
 
     // Initialize report generator
-    this.reportGenerator = new ReportGenerator(this.config, this.analysisCoordinator);
+    this.reportGenerator = new ReportGenerator(this.analysisCoordinator);
 
     // Initialize Lambda test executor
     this.executor = new LambdaTestExecutor();

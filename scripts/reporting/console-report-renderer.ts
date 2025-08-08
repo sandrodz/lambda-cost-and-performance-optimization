@@ -3,7 +3,6 @@
  * Handles all console output formatting for performance reports
  */
 
-import { TestConfig } from '../types/test-runner';
 import {
   ReportData,
   OverviewData,
@@ -15,10 +14,6 @@ import {
 } from '../types/reporting';
 
 class ConsoleReportRenderer {
-  constructor(_config: TestConfig) {
-    // Configuration received but not stored as it's not used in current implementation
-  }
-
   /**
    * Render the complete report to console
    */

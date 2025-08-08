@@ -26,7 +26,7 @@ class AnalysisCoordinator {
   constructor(config: TestConfig) {
     this.config = config;
     this.costAnalyzer = new CostAnalyzer(config);
-    this.insightsAnalyzer = new PerformanceInsightsAnalyzer(config);
+    this.insightsAnalyzer = new PerformanceInsightsAnalyzer();
   }
 
   /**

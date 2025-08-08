@@ -3,15 +3,11 @@
  * Analyzes test results and generates actionable insights
  */
 
-import { TestConfig, TestResults, TestSummary } from '../types/test-runner';
+import { TestResults, TestSummary } from '../types/test-runner';
 import { CostEfficiencyAnalysis, CostAnalyzerOutput } from '../types/analysis';
 import { ScenarioData, DataQualityData } from '../types/reporting';
 
 class PerformanceInsightsAnalyzer {
-  constructor(_config: TestConfig) {
-    // Config stored but not currently used in this analyzer
-  }
-
   /**
    * Generate performance insights from summary data
    */

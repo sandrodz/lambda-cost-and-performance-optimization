@@ -6,16 +6,16 @@
 import AnalysisCoordinator from '../analysis/analysis-coordinator';
 import ConsoleReportRenderer from './console-report-renderer';
 
-import { TestConfig, TestResults } from '../types/test-runner';
+import { TestResults } from '../types/test-runner';
 import { ReportData } from '../types/reporting';
 
 class ReportGenerator {
   private analysisCoordinator: AnalysisCoordinator;
   private consoleRenderer: ConsoleReportRenderer;
 
-  constructor(config: TestConfig, analysisCoordinator: AnalysisCoordinator) {
+  constructor(analysisCoordinator: AnalysisCoordinator) {
     this.analysisCoordinator = analysisCoordinator;
-    this.consoleRenderer = new ConsoleReportRenderer(config);
+    this.consoleRenderer = new ConsoleReportRenderer();
   }
 
   /**
