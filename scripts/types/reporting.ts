@@ -1,15 +1,6 @@
-/**
- * Reporting-specific interfaces for Lambda performance testing
- */
+import type { TestResults, TestConfig } from './test-runner';
+import type { OptimalMemoryConfig, CostAnalysisConfig } from './analysis';
 
-import { TestResults, TestConfig } from './test-runner';
-import { OptimalMemoryConfig, CostAnalysisConfig } from './analysis';
-
-// === REPORT DATA TYPES ===
-
-/**
- * Complete report data structure
- */
 export interface ReportData {
   overview: OverviewData;
   recommendations: RecommendationsData;
@@ -19,9 +10,6 @@ export interface ReportData {
   dataQuality: DataQualityData;
 }
 
-/**
- * Report overview section data
- */
 export interface OverviewData {
   timestamp: string;
   totalFunctionsTested: number;
@@ -31,25 +19,16 @@ export interface OverviewData {
   };
 }
 
-/**
- * Report recommendations section data
- */
 export interface RecommendationsData {
   basic?: OptimalMemoryConfig;
   computation?: OptimalMemoryConfig;
 }
 
-/**
- * Report analysis section data
- */
 export interface AnalysisData {
   basic?: FunctionAnalysisData;
   computation?: FunctionAnalysisData;
 }
 
-/**
- * Function analysis data for visualization
- */
 export interface FunctionAnalysisData {
   warmStart: PerformanceDataPoint[];
   coldStart: PerformanceDataPoint[];
@@ -57,9 +36,6 @@ export interface FunctionAnalysisData {
   hasAnyColdStart: boolean;
 }
 
-/**
- * Performance data point for visualization
- */
 export interface PerformanceDataPoint {
   memoryMB: number;
   executionTime: number;
@@ -68,65 +44,42 @@ export interface PerformanceDataPoint {
   costChange: number;
 }
 
-/**
- * Blended cost scenario data point
- */
 export interface BlendedDataPoint {
   memoryMB: number;
   scenarios: { [coldPercentage: number]: number };
   useCase: string;
 }
 
-/**
- * Scenario optimization data
- */
 export interface ScenarioData {
   basic?: ScenarioOptimizations;
   computation?: ScenarioOptimizations;
 }
 
-/**
- * Optimization scenarios for different use cases
- */
 export interface ScenarioOptimizations {
   warmOptimal: CostAnalysisConfig;
   perfOptimal: CostAnalysisConfig;
 }
 
-/**
- * Data quality metrics
- */
 export interface DataQualityData {
   basic?: FunctionDataQuality;
   computation?: FunctionDataQuality;
 }
 
-/**
- * Function-specific data quality metrics
- */
 export interface FunctionDataQuality {
   totalConfigurations: number;
   configurations: ConfigurationQuality[];
 }
 
-/**
- * Configuration-specific quality metrics
- */
 export interface ConfigurationQuality {
   memoryMB: number;
   coldCount: number;
   warmCount: number;
 }
 
-/**
- * File save operation response
- */
 export interface SaveResultsResponse {
   dataFile: string;
   summaryFile: string | null;
 }
-
-// === REPORT GENERATION TYPES ===
 
 export interface ReportGeneratorInput {
   testResults: TestResults;
@@ -160,7 +113,7 @@ export interface TableColumn {
   header: string;
   align?: 'left' | 'center' | 'right';
   width?: number;
-  formatter?: (value: any) => string;
+  formatter?: (_value: any) => string;
 }
 
 export interface TableRow {
@@ -195,7 +148,7 @@ export interface SectionConfig {
   content: SectionContent[];
 }
 
-export type SectionContent = 
+export type SectionContent =
   | { type: 'text'; value: string }
   | { type: 'table'; value: TableConfig }
   | { type: 'chart'; value: ChartConfig }
@@ -206,7 +159,7 @@ export interface ReportSection {
   id: string;
   title: string;
   order: number;
-  generator: (input: ReportGeneratorInput) => SectionConfig;
+  generator: (_input: ReportGeneratorInput) => SectionConfig;
 }
 
 export interface FormattingOptions {

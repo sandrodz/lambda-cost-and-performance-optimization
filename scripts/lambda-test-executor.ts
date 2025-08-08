@@ -4,8 +4,8 @@
  */
 
 import https from 'https';
-import { TestExecutionResult, FunctionTestResult } from './types/test-runner.js';
-import { LambdaTestConfig, LambdaFunctionResponse, TestRequestResult } from './types/executor.js';
+import { TestExecutionResult, FunctionTestResult } from './types/test-runner';
+import { LambdaTestConfig, LambdaFunctionResponse, TestRequestResult } from './types/executor';
 
 class LambdaTestExecutor {
   /**

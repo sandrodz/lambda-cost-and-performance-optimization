@@ -8,12 +8,12 @@ import fs from 'fs';
 // Import modules
 import AnalysisCoordinator from './analysis/analysis-coordinator';
 import ReportGenerator from './reporting/report-generator';
-import LambdaTestExecutor from './lambda-test-executor.js';
+import LambdaTestExecutor from './lambda-test-executor';
 
 // Import types
-import { TestResults, TestConfig } from './types/test-runner.js';
-import { LambdaTestConfig } from './types/executor.js';
-import { SaveResultsResponse } from './types/reporting.js';
+import { TestResults, TestConfig } from './types/test-runner';
+import { LambdaTestConfig } from './types/executor';
+import { SaveResultsResponse } from './types/reporting';
 
 export interface PerformanceTestRunnerOptions {
   lambdaPricePerGbSecond?: number;

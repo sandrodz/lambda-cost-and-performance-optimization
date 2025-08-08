@@ -1,7 +1,3 @@
-/**
- * Lambda test executor specific types
- */
-
 export interface LambdaTestConfig {
   apiBaseUrl: string;
   targetColdStarts: number;
@@ -20,15 +16,15 @@ export interface LambdaFunctionResponse {
   };
   executionEnvironment: {
     coldStart: boolean;
-    memoryLimit: number; // Keep as memoryLimit since this is the Lambda response format
+    memoryLimit: number;
     requestId: string;
   };
 }
 
 export interface TestRequestResult {
   requestNumber: number;
-  duration: number; // Standardized from executionTime to match ExecutionResult
-  memoryMB: number; // Standardized from memoryLimit for consistency
+  duration: number;
+  memoryMB: number;
   requestId: string;
   isColdStart: boolean;
   timestamp: string;

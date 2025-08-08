@@ -1,20 +1,10 @@
-/**
- * Analysis-specific interfaces for Lambda performance testing
- */
+import type { TestResults, TestConfig, FunctionTestResult } from './test-runner';
 
-// === OPTIMIZATION AND COST ANALYSIS TYPES ===
-
-/**
- * Optimal configurations for different function types
- */
 export interface OptimalMemoryConfigurations {
   basic?: OptimalMemoryConfig;
   computation?: OptimalMemoryConfig;
 }
 
-/**
- * Optimal memory configuration with performance and cost metrics
- */
 export interface OptimalMemoryConfig {
   memoryMB: number;
   warmStartAvg: number;
@@ -23,26 +13,17 @@ export interface OptimalMemoryConfig {
   recommendation: string;
 }
 
-/**
- * Cost efficiency analysis for all function types
- */
 export interface CostEfficiencyAnalysis {
   basic?: FunctionCostAnalysis;
   computation?: FunctionCostAnalysis;
 }
 
-/**
- * Detailed cost analysis for a function type
- */
 export interface FunctionCostAnalysis {
   mostCostEfficient: CostAnalysisConfig;
   leastCostEfficient: CostAnalysisConfig;
   allConfigurations: CostAnalysisConfig[];
 }
 
-/**
- * Cost analysis configuration with detailed metrics
- */
 export interface CostAnalysisConfig {
   memoryMB: number;
   avgExecutionTime: number;
@@ -52,13 +33,6 @@ export interface CostAnalysisConfig {
   blendedCostPer1M: number;
   costEfficiencyScore: number;
 }
-
-// === ANALYSIS PIPELINE TYPES ===
-
-// Forward type references (actual types defined in test-runner.ts)
-type TestResults = import('./test-runner').TestResults;
-type TestConfig = import('./test-runner').TestConfig;
-type FunctionTestResult = import('./test-runner').FunctionTestResult;
 
 export interface AnalysisInput {
   testResults: TestResults;
